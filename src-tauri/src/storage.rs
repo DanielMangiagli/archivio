@@ -1,6 +1,7 @@
 use crate::error::{AppError, AppResult};
 use crate::models::{PhotoMetadata, Project, ProjectSummary};
 use exif::Reader;
+use std::collections::HashSet;
 use std::fs;
 use std::io::BufReader;
 use std::path::{Path, PathBuf};
@@ -39,13 +40,6 @@ impl Storage {
             .join(phase_id)
             .join("foto")
             .join("thumb")
-    }
-
-    pub fn original_photo_dir(&self, project: &Project, phase_id: &str) -> PathBuf {
-        self.project_dir(project)
-            .join(phase_id)
-            .join("foto")
-            .join("originals")
     }
 
     pub fn init(&self) -> AppResult<()> {
@@ -92,14 +86,12 @@ impl Storage {
         Ok(())
     }
 
-    pub fn load_metadata(&self, folder_name: &str) -> AppResult<Project> {
-        let path = self.projects_dir().join(folder_name).join("metadata.json");
-        if !path.exists() {
-            return Err(AppError::ProjectNotFound(folder_name.to_string()));
-        }
-        let data = fs::read_to_string(&path)?;
-        let project: Project = serde_json::from_str(&data)?;
-        Ok(project)
+    pub fn load_project_by_id(&self, id: &str) -> AppResult<Project> {
+        let projects = self.list_projects()?;
+        projects
+            .into_iter()
+            .find(|p| p.id == id)
+            .ok_or_else(|| AppError::ProjectNotFound(id.to_string()))
     }
 
     pub fn list_projects(&self) -> AppResult<Vec<Project>> {
@@ -131,6 +123,110 @@ impl Storage {
         let dir = self.project_dir(project);
         if dir.exists() {
             fs::remove_dir_all(dir)?;
+        }
+        Ok(())
+    }
+
+    /// Walk each phase folder on disk, reconcile with metadata.json.
+    /// Adds new files found on disk, removes entries for deleted files.
+    pub fn scan_project_files(&self, project: &mut Project) -> AppResult<()> {
+        let root = self.root().to_path_buf();
+        let project_dir = self.project_dir(project);
+
+        for phase in &mut project.phases {
+            let phase_dir = project_dir.join(&phase.folder_name);
+            if !phase_dir.exists() {
+                continue;
+            }
+
+            // Collect all files currently on disk under this phase folder
+            let mut disk_files: Vec<PathBuf> = Vec::new();
+            Self::walk_files(&phase_dir, &mut disk_files)?;
+
+            // Build set of filenames already tracked in metadata
+            let tracked_names: HashSet<String> =
+                phase.files.iter().map(|f| f.name.clone()).collect();
+
+            // Add files found on disk but not in metadata
+            for disk_path in &disk_files {
+                let filename = disk_path
+                    .file_name()
+                    .unwrap_or_default()
+                    .to_string_lossy()
+                    .to_string();
+
+                if !tracked_names.contains(&filename) {
+                    let metadata = fs::metadata(disk_path)?;
+                    let mime = crate::commands::mime_guess(&filename);
+
+                    let mut file_entry = crate::models::FileEntry {
+                        name: filename,
+                        path: disk_path
+                            .strip_prefix(&root)
+                            .unwrap_or(disk_path)
+                            .to_path_buf(),
+                        size: metadata.len(),
+                        mime_type: mime.clone(),
+                        created_at: Some(chrono::Utc::now()),
+                        photo_metadata: None,
+                    };
+
+                    // Process photos
+                    if let Some(ref m) = mime {
+                        if m.starts_with("image/") {
+                            if let Ok(mut photo_meta) = extract_exif(disk_path) {
+                                let thumb_dir = phase_dir.join("foto").join("thumb");
+                                let _ = fs::create_dir_all(&thumb_dir);
+                                let thumb_name = format!("thumb_{}", file_entry.name);
+                                let thumb_path = thumb_dir.join(&thumb_name);
+
+                                if generate_thumbnail(disk_path, &thumb_path, 300).is_ok() {
+                                    photo_meta.has_thumbnail = true;
+                                    photo_meta.thumbnail_path = Some(
+                                        thumb_path
+                                            .strip_prefix(&root)
+                                            .unwrap_or(&thumb_path)
+                                            .to_path_buf(),
+                                    );
+                                }
+                                file_entry.photo_metadata = Some(photo_meta);
+                            }
+                        }
+                    }
+
+                    phase.files.push(file_entry);
+                }
+            }
+
+            // Remove files from metadata that no longer exist on disk
+            let disk_names: HashSet<String> = disk_files
+                .iter()
+                .filter_map(|p| p.file_name().map(|f| f.to_string_lossy().to_string()))
+                .collect();
+
+            phase.files.retain(|f| disk_names.contains(&f.name));
+        }
+
+        self.save_metadata(project)?;
+        Ok(())
+    }
+
+    fn walk_files(dir: &Path, files: &mut Vec<PathBuf>) -> AppResult<()> {
+        if !dir.exists() {
+            return Ok(());
+        }
+        for entry in fs::read_dir(dir)? {
+            let entry = entry?;
+            let path = entry.path();
+            if path.is_file() {
+                // Skip metadata.json itself
+                if path.file_name().and_then(|n| n.to_str()) == Some("metadata.json") {
+                    continue;
+                }
+                files.push(path);
+            } else if path.is_dir() {
+                Self::walk_files(&path, files)?;
+            }
         }
         Ok(())
     }

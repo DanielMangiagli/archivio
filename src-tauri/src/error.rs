@@ -18,9 +18,6 @@ pub enum AppError {
     #[error("Image error: {0}")]
     Image(String),
 
-    #[error("EXIF error: {0}")]
-    Exif(String),
-
     #[error("File already exists: {0}")]
     FileAlreadyExists(String),
 }

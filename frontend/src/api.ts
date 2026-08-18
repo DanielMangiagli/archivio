@@ -54,9 +54,9 @@ export async function addFile(
 export async function removeFile(
   projectId: string,
   phaseId: string,
-  fileName: string
+  filePath: string
 ): Promise<void> {
-  return invoke('remove_file', { projectId, phaseId, fileName });
+  return invoke('remove_file', { projectId, phaseId, filePath });
 }
 
 export async function listFiles(
@@ -70,10 +70,29 @@ export async function generateIndex(): Promise<string> {
   return invoke('generate_index');
 }
 
+export async function openIndex(): Promise<void> {
+  return invoke('open_index');
+}
+
 export async function getIndexHtml(): Promise<string> {
   return invoke('get_index_html');
 }
 
 export async function getArchiveRoot(): Promise<string> {
   return invoke('get_archive_root');
+}
+
+export async function scanProject(id: string): Promise<Project> {
+  return invoke('scan_project', { id });
+}
+
+export async function scanAllProjects(): Promise<ProjectSummary[]> {
+  return invoke('scan_all_projects');
+}
+
+export async function openFileLocation(
+  projectId: string,
+  filePath: string
+): Promise<void> {
+  return invoke('open_file_location', { projectId, filePath });
 }
