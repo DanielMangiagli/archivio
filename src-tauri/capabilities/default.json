@@ -4,10 +4,6 @@
   "description": "Default capabilities for Archivio",
   "windows": ["main"],
   "permissions": [
-    "core:default",
-    "dialog:default",
-    "dialog:allow-open",
-    "dialog:allow-ask",
-    "dialog:allow-message"
+    "core:default"
   ]
 }

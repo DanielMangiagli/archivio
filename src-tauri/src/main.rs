@@ -37,6 +37,8 @@ fn main() {
             commands::scan_project,
             commands::scan_all_projects,
             commands::open_file_location,
+            commands::pick_files,
+            commands::get_project_meta,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

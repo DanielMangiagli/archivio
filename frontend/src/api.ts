@@ -96,3 +96,11 @@ export async function openFileLocation(
 ): Promise<void> {
   return invoke('open_file_location', { projectId, filePath });
 }
+
+export async function pickFiles(): Promise<string[]> {
+  return invoke('pick_files');
+}
+
+export async function getProjectMeta(id: string): Promise<Project> {
+  return invoke('get_project_meta', { id });
+}
