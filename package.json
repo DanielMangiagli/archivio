@@ -1,5 +1,6 @@
 {
   "name": "archivio",
+  "version": "1.0.3",
   "private": true,
   "engines": {
     "node": ">=24"
