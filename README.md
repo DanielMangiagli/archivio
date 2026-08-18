@@ -13,32 +13,28 @@ Desktop application for managing and archiving civil engineering projects. Built
 - **Click to open** — click a file name to reveal it in the system file manager
 - **Cross-platform** — runs on Windows, macOS, and Linux
 
-## Prerequisites
+## Installation
 
-- [Node.js](https://nodejs.org/) v18+
+Download the latest installer from [Releases](https://github.com/DanielMangiagli/archivio/releases). Double-click the `.msi` or `.exe` to install.
+
+## Development
+
+### Prerequisites
+
+- [Node.js](https://nodejs.org/) v24+
 - [Rust](https://rustup.rs/) (stable)
 - Platform-specific dependencies for Tauri — see the [Tauri prerequisites guide](https://v2.tauri.app/start/prerequisites/)
 
-## Getting Started
+### Getting Started
 
 ```bash
-# Install frontend dependencies
-cd frontend && npm install
-
-# Run in development mode
-cd ../src-tauri && cargo tauri dev
-
-# Or from the project root (after adding root package.json)
 npm install
 npm run dev
 ```
 
-## Building
+### Building
 
 ```bash
-# Development build
-cargo tauri dev
-
 # Production build (creates installer in src-tauri/target/release/bundle/)
 cargo tauri build
 ```
@@ -48,12 +44,12 @@ The build output depends on your platform:
 - **Windows**: `.msi` and `.exe` in `src-tauri/target/release/bundle/msi/` and `nsis/`
 - **Linux**: `.deb` and `.AppImage` in `src-tauri/target/release/bundle/`
 
-## Windows Installer (CI)
+### Windows Installer (CI)
 
 A GitHub Actions workflow automatically builds a Windows installer when you push a version tag:
 
 ```bash
-git tag v1.0.0
+git tag v1.0.3
 git push --tags
 ```
 
