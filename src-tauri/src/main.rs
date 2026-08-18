@@ -18,9 +18,6 @@ fn main() {
     storage.init().expect("Failed to initialize archive directory");
 
     tauri::Builder::default()
-        .plugin(tauri_plugin_dialog::init())
-        .plugin(tauri_plugin_fs::init())
-        .plugin(tauri_plugin_shell::init())
         .manage(AppState {
             storage: Mutex::new(storage),
         })
@@ -34,8 +31,12 @@ fn main() {
             commands::remove_file,
             commands::list_files,
             commands::generate_index,
+            commands::open_index,
             commands::get_index_html,
             commands::get_archive_root,
+            commands::scan_project,
+            commands::scan_all_projects,
+            commands::open_file_location,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

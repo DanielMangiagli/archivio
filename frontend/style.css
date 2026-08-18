@@ -318,6 +318,12 @@ body {
 .file-name {
   font-weight: 500;
   font-size: 0.9rem;
+  cursor: pointer;
+  color: #1a73e8;
+}
+
+.file-name:hover {
+  text-decoration: underline;
 }
 
 .file-meta {

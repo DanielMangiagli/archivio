@@ -25,7 +25,7 @@ pub fn list_projects(state: State<'_, AppState>) -> AppResult<Vec<ProjectSummary
 #[tauri::command]
 pub fn get_project(state: State<'_, AppState>, id: String) -> AppResult<Project> {
     let storage = state.storage.lock().unwrap();
-    storage.load_metadata(&id)
+    storage.load_project_by_id(&id)
 }
 
 #[tauri::command]
@@ -80,7 +80,7 @@ pub fn update_project(
     notes: Option<String>,
 ) -> AppResult<Project> {
     let storage = state.storage.lock().unwrap();
-    let mut project = storage.load_metadata(&id)?;
+    let mut project = storage.load_project_by_id(&id)?;
 
     if let Some(v) = code { project.code = v; }
     if let Some(v) = name { project.name = v; }
@@ -114,7 +114,7 @@ pub fn update_project(
 #[tauri::command]
 pub fn delete_project(state: State<'_, AppState>, id: String) -> AppResult<()> {
     let storage = state.storage.lock().unwrap();
-    let project = storage.load_metadata(&id)?;
+    let project = storage.load_project_by_id(&id)?;
     storage.delete_project(&project)?;
     Ok(())
 }
@@ -137,7 +137,7 @@ pub fn add_file(
     }
 
     let storage = state.storage.lock().unwrap();
-    let mut project = storage.load_metadata(&project_id)?;
+    let mut project = storage.load_project_by_id(&project_id)?;
 
     // Get folder name before mutable borrow
     let phase_idx = project
@@ -211,10 +211,10 @@ pub fn remove_file(
     state: State<'_, AppState>,
     project_id: String,
     phase_id: String,
-    file_name: String,
+    file_path: String,
 ) -> AppResult<()> {
     let storage = state.storage.lock().unwrap();
-    let mut project = storage.load_metadata(&project_id)?;
+    let mut project = storage.load_project_by_id(&project_id)?;
 
     let phase = project
         .phases
@@ -224,7 +224,10 @@ pub fn remove_file(
             crate::error::AppError::InvalidPath(format!("Phase not found: {}", phase_id))
         })?;
 
-    let idx = phase.files.iter().position(|f| f.name == file_name);
+    let idx = phase
+        .files
+        .iter()
+        .position(|f| f.path.to_string_lossy() == file_path);
     if let Some(idx) = idx {
         let file = &phase.files[idx];
         let full_path = storage.root().join(&file.path);
@@ -254,7 +257,7 @@ pub fn list_files(
     phase_id: String,
 ) -> AppResult<Vec<FileEntry>> {
     let storage = state.storage.lock().unwrap();
-    let project = storage.load_metadata(&project_id)?;
+    let project = storage.load_project_by_id(&project_id)?;
 
     let phase = project
         .phases
@@ -274,8 +277,29 @@ pub fn generate_index(state: State<'_, AppState>) -> AppResult<String> {
     let storage = state.storage.lock().unwrap();
     let projects = storage.list_projects()?;
     let html = indexer::generate_index(&projects);
-    fs::write(storage.index_path(), &html)?;
-    Ok(storage.index_path().to_string_lossy().to_string())
+    let path = storage.index_path();
+    fs::write(&path, &html)?;
+    let path_str = path.to_string_lossy().to_string();
+    let _ = open::that(&path_str);
+    Ok(path_str)
+}
+
+#[tauri::command]
+pub fn open_index(state: State<'_, AppState>) -> AppResult<()> {
+    let path = {
+        let storage = state.storage.lock().unwrap();
+        storage.index_path()
+    };
+    let path_str = path.to_string_lossy().to_string();
+    if path.exists() {
+        open::that(&path_str)
+            .map_err(|e| crate::error::AppError::InvalidPath(format!("Failed to open: {}", e)))?;
+    } else {
+        return Err(crate::error::AppError::InvalidPath(
+            "Index not generated yet".into(),
+        ));
+    }
+    Ok(())
 }
 
 #[tauri::command]
@@ -293,7 +317,49 @@ pub fn get_archive_root(state: State<'_, AppState>) -> String {
     storage.root().to_string_lossy().to_string()
 }
 
-fn mime_guess(filename: &str) -> Option<String> {
+#[tauri::command]
+pub fn scan_project(state: State<'_, AppState>, id: String) -> AppResult<Project> {
+    let storage = state.storage.lock().unwrap();
+    let mut project = storage.load_project_by_id(&id)?;
+    storage.scan_project_files(&mut project)?;
+    Ok(project)
+}
+
+#[tauri::command]
+pub fn scan_all_projects(state: State<'_, AppState>) -> AppResult<Vec<ProjectSummary>> {
+    let storage = state.storage.lock().unwrap();
+    let mut projects = storage.list_projects()?;
+    for project in &mut projects {
+        let _ = storage.scan_project_files(project);
+    }
+    Ok(projects.iter().map(|p| storage.project_summary(p)).collect())
+}
+
+#[tauri::command]
+pub fn open_file_location(
+    state: State<'_, AppState>,
+    _project_id: String,
+    file_path: String,
+) -> AppResult<()> {
+    let root = {
+        let storage = state.storage.lock().unwrap();
+        storage.root().to_path_buf()
+    };
+    let full_path = root.join(&file_path);
+    let dir = if full_path.is_dir() {
+        full_path
+    } else {
+        full_path
+            .parent()
+            .map(|p| p.to_path_buf())
+            .unwrap_or(root)
+    };
+    open::that(&dir)
+        .map_err(|e| crate::error::AppError::InvalidPath(format!("Failed to open: {}", e)))?;
+    Ok(())
+}
+
+pub fn mime_guess(filename: &str) -> Option<String> {
     let ext = Path::new(filename).extension()?.to_str()?;
     match ext.to_lowercase().as_str() {
         "pdf" => Some("application/pdf".into()),

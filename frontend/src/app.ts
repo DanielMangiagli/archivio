@@ -1,11 +1,12 @@
-import { listProjects, getProject, createProject, updateProject, deleteProject, addFile, removeFile, generateIndex, getIndexHtml } from './api';
-import type { ProjectSummary, Project } from './types';
+import { listProjects, getProject, createProject, updateProject, deleteProject, addFile, removeFile, generateIndex, openIndex, scanProject, openFileLocation } from './api';
+import type { ProjectSummary, Project, FileEntry } from './types';
 
 let currentView: 'dashboard' | 'project' = 'dashboard';
 let currentProjectId: string | null = null;
 let currentPhase: string = 'contratto';
 let searchQuery = '';
 let statusFilter = '';
+let allProjects: ProjectSummary[] = [];
 
 function $(id: string): HTMLElement {
   return document.getElementById(id)!;
@@ -18,7 +19,7 @@ function formatAmount(amount: number | null): string {
 
 function formatDate(date: string | null): string {
   if (!date) return '-';
-  return new Date(date).toLocaleDateString('it-IT');
+  return new Date(date + 'T00:00:00').toLocaleDateString('it-IT');
 }
 
 function statusLabel(status: string): string {
@@ -40,13 +41,13 @@ function formatSize(bytes: number): string {
 
 // ---- Dashboard ----
 
-async function renderDashboard() {
-  currentView = 'dashboard';
-  currentProjectId = null;
+async function loadProjects() {
+  allProjects = await listProjects();
+  renderProjectGrid();
+}
 
-  const projects = await listProjects();
-
-  const filtered = projects.filter((p) => {
+function getFilteredProjects(): ProjectSummary[] {
+  return allProjects.filter((p) => {
     const matchSearch =
       !searchQuery ||
       p.code.toLowerCase().includes(searchQuery) ||
@@ -55,8 +56,58 @@ async function renderDashboard() {
     const matchStatus = !statusFilter || p.status === statusFilter;
     return matchSearch && matchStatus;
   });
+}
 
-  let html = `
+function renderProjectGrid() {
+  const filtered = getFilteredProjects();
+  const grid = document.querySelector('.project-grid') as HTMLElement | null;
+  if (!grid) return;
+
+  if (filtered.length === 0) {
+    grid.innerHTML = '<p class="empty">Nessun progetto trovato.</p>';
+    return;
+  }
+
+  grid.innerHTML = filtered
+    .map(
+      (p) => `
+    <div class="project-card" data-id="${p.id}">
+      <div class="card-header">
+        <span class="card-code">${p.code}</span>
+        <span class="status status-${p.status}">${statusLabel(p.status)}</span>
+      </div>
+      <h3>${p.name}</h3>
+      <p class="client">${p.client}</p>
+      <div class="card-meta">
+        <span>${formatDate(p.contract_date)}</span>
+        <span>${formatAmount(p.amount)}</span>
+      </div>
+      <div class="card-footer">
+        <span>${p.file_count} file</span>
+        <span>${p.photo_count} foto</span>
+      </div>
+    </div>
+  `
+    )
+    .join('');
+
+  // Rebind card click handlers
+  grid.querySelectorAll('.project-card').forEach((card) => {
+    card.addEventListener('click', () => {
+      const id = card.getAttribute('data-id');
+      if (id) renderProjectDetail(id);
+    });
+  });
+}
+
+async function renderDashboard() {
+  currentView = 'dashboard';
+  currentProjectId = null;
+
+  await loadProjects();
+
+  const app = $('app');
+  app.innerHTML = `
     <div class="dashboard">
       <header>
         <h1>Archivio</h1>
@@ -74,56 +125,32 @@ async function renderDashboard() {
           <button id="btnIndex" class="btn">Genera Indice</button>
         </div>
       </header>
-      <div class="project-grid">
+      <div class="project-grid"></div>
+    </div>
   `;
 
-  for (const p of filtered) {
-    html += `
-      <div class="project-card" data-id="${p.id}">
-        <div class="card-header">
-          <span class="card-code">${p.code}</span>
-          <span class="status status-${p.status}">${statusLabel(p.status)}</span>
-        </div>
-        <h3>${p.name}</h3>
-        <p class="client">${p.client}</p>
-        <div class="card-meta">
-          <span>${formatDate(p.contract_date)}</span>
-          <span>${formatAmount(p.amount)}</span>
-        </div>
-        <div class="card-footer">
-          <span>${p.file_count} file</span>
-          <span>${p.photo_count} foto</span>
-        </div>
-      </div>
-    `;
-  }
+  renderProjectGrid();
 
-  html += '</div></div>';
-  $('app').innerHTML = html;
-
-  // Bind events
-  $('search')?.addEventListener('input', (e) => {
+  // Bind search — only re-render grid, NOT the header
+  $('search').addEventListener('input', (e) => {
     searchQuery = (e.target as HTMLInputElement).value.toLowerCase();
-    renderDashboard();
+    renderProjectGrid();
   });
 
-  $('statusFilter')?.addEventListener('change', (e) => {
+  $('statusFilter').addEventListener('change', (e) => {
     statusFilter = (e.target as HTMLSelectElement).value;
-    renderDashboard();
+    renderProjectGrid();
   });
 
-  $('btnNew')?.addEventListener('click', showCreateDialog);
+  $('btnNew').addEventListener('click', showCreateDialog);
 
-  $('btnIndex')?.addEventListener('click', async () => {
-    const path = await generateIndex();
-    alert(`Indice generato: ${path}`);
-  });
-
-  document.querySelectorAll('.project-card').forEach((card) => {
-    card.addEventListener('click', () => {
-      const id = card.getAttribute('data-id');
-      if (id) renderProjectDetail(id);
-    });
+  $('btnIndex').addEventListener('click', async () => {
+    try {
+      await generateIndex();
+      await openIndex();
+    } catch (e) {
+      alert('Errore: ' + e);
+    }
   });
 }
 
@@ -175,6 +202,10 @@ function showCreateDialog() {
 
 // ---- Project Detail ----
 
+function sortFiles(files: FileEntry[]): FileEntry[] {
+  return [...files].sort((a, b) => a.name.localeCompare(b.name, 'it'));
+}
+
 async function renderProjectDetail(id: string) {
   currentView = 'project';
   currentProjectId = id;
@@ -182,6 +213,8 @@ async function renderProjectDetail(id: string) {
   const project = await getProject(id);
   const phase = project.phases.find((p) => p.id === currentPhase) || project.phases[0];
   currentPhase = phase.id;
+
+  const sortedFiles = sortFiles(phase.files);
 
   let html = `
     <div class="project-detail">
@@ -226,10 +259,12 @@ async function renderProjectDetail(id: string) {
 
       <div class="phase-content" id="phaseContent">
         <div class="phase-toolbar">
+          <button id="btnSync" class="btn">Sincronizza Cartella</button>
           <button id="btnAddFile" class="btn primary">+ Aggiungi File</button>
+          <input type="file" id="fileInput" multiple style="display:none" />
         </div>
         <div class="file-list" id="fileList">
-          ${renderFileList(phase.files)}
+          ${renderFileList(sortedFiles)}
         </div>
       </div>
     </div>
@@ -238,31 +273,47 @@ async function renderProjectDetail(id: string) {
   $('app').innerHTML = html;
 
   // Bind events
-  $('btnBack')?.addEventListener('click', () => renderDashboard());
+  $('btnBack').addEventListener('click', () => renderDashboard());
+  $('btnEdit').addEventListener('click', () => showEditDialog(project));
 
-  $('btnEdit')?.addEventListener('click', () => showEditDialog(project));
-
-  $('btnDelete')?.addEventListener('click', async () => {
+  $('btnDelete').addEventListener('click', async () => {
     if (confirm('Eliminare questo progetto?')) {
       await deleteProject(id);
       renderDashboard();
     }
   });
 
-  $('btnAddFile')?.addEventListener('click', async () => {
-    // Use Tauri dialog to pick a file
-    const { open } = await import('@tauri-apps/plugin-dialog');
-    const selected = await open({
-      multiple: true,
-      filters: [{ name: 'Tutti i file', extensions: ['*'] }],
+  // Sync button: re-scan the folder and refresh
+  $('btnSync').addEventListener('click', async () => {
+    const synced = await scanProject(id);
+    const newPhase = synced.phases.find((p) => p.id === currentPhase) || synced.phases[0];
+    currentPhase = newPhase.id;
+    const sorted = sortFiles(newPhase.files);
+    $('fileList').innerHTML = renderFileList(sorted);
+    synced.phases.forEach((p) => {
+      const tab = document.querySelector(`.tab[data-phase="${p.id}"]`);
+      if (tab) tab.textContent = `${p.label} (${p.files.length})`;
     });
-    if (selected) {
-      const files = Array.isArray(selected) ? selected : [selected];
-      for (const filePath of files) {
+  });
+
+  // File picker via native <input type="file">
+  const fileInput = $('fileInput') as HTMLInputElement;
+  $('btnAddFile').addEventListener('click', () => fileInput.click());
+
+  fileInput.addEventListener('change', async () => {
+    if (!fileInput.files || fileInput.files.length === 0) return;
+    for (const file of Array.from(fileInput.files)) {
+      const anyFile = file as any;
+      const filePath = anyFile.path || anyFile.webkitRelativePath;
+      if (filePath) {
         await addFile(id, currentPhase, filePath);
       }
-      renderProjectDetail(id);
     }
+    const refreshed = await scanProject(id);
+    const newPhase = refreshed.phases.find((p) => p.id === currentPhase) || refreshed.phases[0];
+    currentPhase = newPhase.id;
+    $('fileList').innerHTML = renderFileList(sortFiles(newPhase.files));
+    fileInput.value = '';
   });
 
   document.querySelectorAll('.tab').forEach((tab) => {
@@ -272,20 +323,30 @@ async function renderProjectDetail(id: string) {
     });
   });
 
-  // File remove buttons
   document.querySelectorAll('.btn-remove-file').forEach((btn) => {
     btn.addEventListener('click', async (e) => {
       e.stopPropagation();
-      const fileName = btn.getAttribute('data-file');
-      if (fileName && confirm(`Rimuovere ${fileName}?`)) {
-        await removeFile(id, currentPhase, fileName);
+      const filePath = btn.getAttribute('data-file-path');
+      if (filePath && confirm(`Rimuovere file?`)) {
+        await removeFile(id, currentPhase, filePath);
         renderProjectDetail(id);
+      }
+    });
+  });
+
+  // Click on file name → open containing folder
+  document.querySelectorAll('.file-name').forEach((el) => {
+    el.addEventListener('click', async (e) => {
+      e.stopPropagation();
+      const filePath = el.getAttribute('data-file-path');
+      if (filePath) {
+        await openFileLocation(id, filePath);
       }
     });
   });
 }
 
-function renderFileList(files: Project['phases'][0]['files']): string {
+function renderFileList(files: FileEntry[]): string {
   if (files.length === 0) {
     return '<p class="empty">Nessun file in questa fase.</p>';
   }
@@ -296,7 +357,7 @@ function renderFileList(files: Project['phases'][0]['files']): string {
     <div class="file-item">
       <div class="file-icon">${fileIcon(f.mime_type)}</div>
       <div class="file-info">
-        <span class="file-name">${f.name}</span>
+        <span class="file-name" data-file-path="${f.path}" title="Clicca per aprire la cartella">${f.name}</span>
         <span class="file-meta">${formatSize(f.size)} ${f.mime_type ? `· ${f.mime_type}` : ''}</span>
         ${
           f.photo_metadata?.date_taken
@@ -304,7 +365,7 @@ function renderFileList(files: Project['phases'][0]['files']): string {
             : ''
         }
       </div>
-      <button class="btn-remove-file btn danger small" data-file="${f.name}">×</button>
+      <button class="btn-remove-file btn danger small" data-file-path="${f.path}" title="Elimina">×</button>
     </div>
   `
     )
