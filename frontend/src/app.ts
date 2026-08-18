@@ -1,4 +1,4 @@
-import { listProjects, getProject, createProject, updateProject, deleteProject, addFile, removeFile, generateIndex, openIndex, scanProject, openFileLocation } from './api';
+import { listProjects, getProject, createProject, updateProject, deleteProject, addFile, removeFile, generateIndex, openIndex, scanProject, openFileLocation, pickFiles, getProjectMeta } from './api';
 import type { ProjectSummary, Project, FileEntry } from './types';
 
 let currentView: 'dashboard' | 'project' = 'dashboard';
@@ -73,6 +73,15 @@ function renderProjectGrid() {
       (p) => `
     <div class="project-card" data-id="${p.id}">
       <div class="card-header">
+        <svg class="card-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M3 21h18"/>
+          <path d="M5 21V7l7-4 7 4v14"/>
+          <path d="M9 21v-6h6v6"/>
+          <path d="M10 9h1"/>
+          <path d="M14 9h1"/>
+          <path d="M10 13h1"/>
+          <path d="M14 13h1"/>
+        </svg>
         <span class="card-code">${p.code}</span>
         <span class="status status-${p.status}">${statusLabel(p.status)}</span>
       </div>
@@ -261,7 +270,6 @@ async function renderProjectDetail(id: string) {
         <div class="phase-toolbar">
           <button id="btnSync" class="btn">Sincronizza Cartella</button>
           <button id="btnAddFile" class="btn primary">+ Aggiungi File</button>
-          <input type="file" id="fileInput" multiple style="display:none" />
         </div>
         <div class="file-list" id="fileList">
           ${renderFileList(sortedFiles)}
@@ -296,24 +304,27 @@ async function renderProjectDetail(id: string) {
     });
   });
 
-  // File picker via native <input type="file">
-  const fileInput = $('fileInput') as HTMLInputElement;
-  $('btnAddFile').addEventListener('click', () => fileInput.click());
-
-  fileInput.addEventListener('change', async () => {
-    if (!fileInput.files || fileInput.files.length === 0) return;
-    for (const file of Array.from(fileInput.files)) {
-      const anyFile = file as any;
-      const filePath = anyFile.path || anyFile.webkitRelativePath;
-      if (filePath) {
-        await addFile(id, currentPhase, filePath);
+  // File picker via Rust native dialog
+  $('btnAddFile').addEventListener('click', async () => {
+    try {
+      const filePaths = await pickFiles();
+      if (filePaths && filePaths.length > 0) {
+        for (const filePath of filePaths) {
+          await addFile(id, currentPhase, filePath);
+        }
+        // After adding, scan to pick up thumbnails/exif, then refresh
+        const refreshed = await scanProject(id);
+        const newPhase = refreshed.phases.find((p) => p.id === currentPhase) || refreshed.phases[0];
+        currentPhase = newPhase.id;
+        $('fileList').innerHTML = renderFileList(sortFiles(newPhase.files));
+        refreshed.phases.forEach((p) => {
+          const tab = document.querySelector(`.tab[data-phase="${p.id}"]`);
+          if (tab) tab.textContent = `${p.label} (${p.files.length})`;
+        });
       }
+    } catch (e) {
+      console.error('Failed to pick files:', e);
     }
-    const refreshed = await scanProject(id);
-    const newPhase = refreshed.phases.find((p) => p.id === currentPhase) || refreshed.phases[0];
-    currentPhase = newPhase.id;
-    $('fileList').innerHTML = renderFileList(sortFiles(newPhase.files));
-    fileInput.value = '';
   });
 
   document.querySelectorAll('.tab').forEach((tab) => {
@@ -327,9 +338,21 @@ async function renderProjectDetail(id: string) {
     btn.addEventListener('click', async (e) => {
       e.stopPropagation();
       const filePath = btn.getAttribute('data-file-path');
-      if (filePath && confirm(`Rimuovere file?`)) {
+      if (!filePath) return;
+      try {
         await removeFile(id, currentPhase, filePath);
-        renderProjectDetail(id);
+        // Reload from metadata only (no rescan) so deleted files stay gone
+        const project = await getProjectMeta(id);
+        const phase = project.phases.find((p) => p.id === currentPhase) || project.phases[0];
+        currentPhase = phase.id;
+        $('fileList').innerHTML = renderFileList(sortFiles(phase.files));
+        project.phases.forEach((p) => {
+          const tab = document.querySelector(`.tab[data-phase="${p.id}"]`);
+          if (tab) tab.textContent = `${p.label} (${p.files.length})`;
+        });
+      } catch (err) {
+        console.error('Delete failed:', err);
+        alert('Errore eliminazione: ' + err);
       }
     });
   });
@@ -346,6 +369,10 @@ async function renderProjectDetail(id: string) {
   });
 }
 
+function escapeAttr(s: string): string {
+  return s.replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+}
+
 function renderFileList(files: FileEntry[]): string {
   if (files.length === 0) {
     return '<p class="empty">Nessun file in questa fase.</p>';
@@ -357,7 +384,7 @@ function renderFileList(files: FileEntry[]): string {
     <div class="file-item">
       <div class="file-icon">${fileIcon(f.mime_type)}</div>
       <div class="file-info">
-        <span class="file-name" data-file-path="${f.path}" title="Clicca per aprire la cartella">${f.name}</span>
+        <span class="file-name" data-file-path="${escapeAttr(f.path)}" title="Clicca per aprire la cartella">${f.name}</span>
         <span class="file-meta">${formatSize(f.size)} ${f.mime_type ? `· ${f.mime_type}` : ''}</span>
         ${
           f.photo_metadata?.date_taken
@@ -365,7 +392,7 @@ function renderFileList(files: FileEntry[]): string {
             : ''
         }
       </div>
-      <button class="btn-remove-file btn danger small" data-file-path="${f.path}" title="Elimina">×</button>
+      <button class="btn-remove-file btn danger small" data-file-path="${escapeAttr(f.path)}" title="Elimina">×</button>
     </div>
   `
     )

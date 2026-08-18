@@ -122,7 +122,8 @@ impl Storage {
     pub fn delete_project(&self, project: &Project) -> AppResult<()> {
         let dir = self.project_dir(project);
         if dir.exists() {
-            fs::remove_dir_all(dir)?;
+            trash::delete(&dir)
+                .map_err(|e| crate::error::AppError::InvalidPath(format!("Failed to trash: {}", e)))?;
         }
         Ok(())
     }

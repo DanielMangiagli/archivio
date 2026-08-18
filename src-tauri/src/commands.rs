@@ -232,19 +232,48 @@ pub fn remove_file(
         let file = &phase.files[idx];
         let full_path = storage.root().join(&file.path);
         if full_path.exists() {
-            fs::remove_file(&full_path)?;
+            let _ = trash::delete(&full_path);
         }
-        // Remove thumbnail if exists
+        // Remove thumbnail permanently (small cache file, not worth trashing)
         if let Some(ref photo) = file.photo_metadata {
             if let Some(ref thumb) = photo.thumbnail_path {
                 let thumb_full = storage.root().join(thumb);
                 if thumb_full.exists() {
-                    fs::remove_file(&thumb_full)?;
+                    let _ = fs::remove_file(&thumb_full);
                 }
             }
         }
         phase.files.remove(idx);
         storage.save_metadata(&project)?;
+    } else {
+        // File not found by path — try to find by name as fallback
+        let file_name_only = std::path::Path::new(&file_path)
+            .file_name()
+            .map(|n| n.to_string_lossy().to_string())
+            .unwrap_or_default();
+        let idx_by_name = phase.files.iter().position(|f| f.name == file_name_only);
+        if let Some(idx) = idx_by_name {
+            let file = &phase.files[idx];
+            let full_path = storage.root().join(&file.path);
+            if full_path.exists() {
+                let _ = trash::delete(&full_path);
+            }
+            if let Some(ref photo) = file.photo_metadata {
+                if let Some(ref thumb) = photo.thumbnail_path {
+                    let thumb_full = storage.root().join(thumb);
+                    if thumb_full.exists() {
+                        let _ = fs::remove_file(&thumb_full);
+                    }
+                }
+            }
+            phase.files.remove(idx);
+            storage.save_metadata(&project)?;
+        } else {
+            return Err(crate::error::AppError::InvalidPath(format!(
+                "File not found: {}",
+                file_path
+            )));
+        }
     }
 
     Ok(())
@@ -379,4 +408,25 @@ pub fn mime_guess(filename: &str) -> Option<String> {
         "zip" => Some("application/zip".into()),
         _ => None,
     }
+}
+
+#[tauri::command]
+pub fn pick_files() -> AppResult<Vec<String>> {
+    let files = rfd::FileDialog::new()
+        .add_filter(
+            "Tutti i file",
+            &["pdf","jpg","jpeg","png","gif","bmp","tiff","tif","doc","docx","xls","xlsx","dwg","dxf","txt","csv","zip"],
+        )
+        .pick_files()
+        .unwrap_or_default();
+    Ok(files
+        .into_iter()
+        .map(|p| p.to_string_lossy().to_string())
+        .collect())
+}
+
+#[tauri::command]
+pub fn get_project_meta(state: State<'_, AppState>, id: String) -> AppResult<Project> {
+    let storage = state.storage.lock().unwrap();
+    storage.load_project_by_id(&id)
 }
