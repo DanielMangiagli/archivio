@@ -29,11 +29,15 @@ export default function ProjectDetail({
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 
   const loadProject = useCallback(async () => {
-    const p = await scanProject(projectId);
-    setProject(p);
-    const phase = p.phases.find((ph) => ph.id === currentPhase) || p.phases[0];
-    if (phase) setCurrentPhase(phase.id);
-  }, [projectId, currentPhase]);
+    try {
+      const p = await scanProject(projectId);
+      setProject(p);
+      const phase = p.phases.find((ph) => ph.id === currentPhase) || p.phases[0];
+      if (phase) setCurrentPhase(phase.id);
+    } catch {
+      onBack();
+    }
+  }, [projectId, currentPhase, onBack]);
 
   useEffect(() => {
     loadProject();

@@ -9,10 +9,12 @@ import {
   type SortingState,
   type ColumnFiltersState,
   type FilterFn,
+  type Column,
 } from '@tanstack/react-table';
 import { useI18n } from '../i18n';
 import { getProject, deleteProject } from '../api';
-import type { ProjectSummary } from '../types';
+import type { Project, ProjectSummary } from '../types';
+import Dialog from './Dialog';
 import ProjectDialog from '../views/ProjectDialog';
 import DatePicker from './DatePicker';
 
@@ -40,84 +42,223 @@ function formatDate(date: string | null): string {
   return new Date(date + 'T00:00:00').toLocaleDateString('it-IT');
 }
 
+const FILTERABLE_COLUMNS = ['code', 'name', 'client', 'status', 'contract_date'];
+
+function hasActiveFilter(col: Column<any, any>): boolean {
+  const val = col.getFilterValue();
+  if (val === undefined || val === '') return false;
+  if (typeof val === 'object' && val !== null) {
+    const range = val as { from?: string; to?: string };
+    return !!(range.from || range.to);
+  }
+  return true;
+}
+
 interface ProjectTableProps {
   projects: ProjectSummary[];
   onProjectClick: (id: string) => void;
   onMutate: () => void;
 }
 
-function ColumnFilter({ column }: { column: any }) {
+interface FilterPopoverProps {
+  column: Column<any, any>;
+  onClose: () => void;
+}
+
+function ActionsCell({ project, onMutate }: { project: ProjectSummary; onMutate: () => void }) {
   const { t } = useI18n();
-  const filterValue = column.getFilterValue();
+  const [isOpen, setIsOpen] = useState(false);
+  const [editingProject, setEditingProject] = useState<Project | null>(null);
+  const [confirmDelete, setConfirmDelete] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
 
-  if (column.id === 'status') {
-    return (
-      <select
-        value={(filterValue as string) ?? ''}
-        onChange={(e) => column.setFilterValue(e.target.value || undefined)}
-      >
-        <option value="">{t('all_statuses')}</option>
-        <option value="bozza">{t('status_bozza')}</option>
-        <option value="in_corso">{t('status_in_corso')}</option>
-        <option value="sospeso">{t('status_sospeso')}</option>
-        <option value="completato">{t('status_completato')}</option>
-        <option value="archiviato">{t('status_archiviato')}</option>
-      </select>
-    );
-  }
+  useEffect(() => {
+    if (!isOpen) return;
+    function handleClickOutside(e: MouseEvent) {
+      if (ref.current && !ref.current.contains(e.target as Node)) {
+        setIsOpen(false);
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [isOpen]);
 
-  if (column.id === 'contract_date') {
-    const range = (filterValue as { from?: string; to?: string }) ?? {};
-    return (
-      <div className="filter-date-range">
-        <DatePicker
-          value={range.from ?? ''}
-          onChange={(val) =>
-            column.setFilterValue({
-              from: val || undefined,
-              to: range.to,
-            })
-          }
-        />
-        <span className="filter-date-sep">–</span>
-        <DatePicker
-          value={range.to ?? ''}
-          onChange={(val) =>
-            column.setFilterValue({
-              from: range.from,
-              to: val || undefined,
-            })
-          }
-        />
-        {(range.from || range.to) && (
-          <button
-            className="filter-clear-btn"
-            onClick={() => column.setFilterValue(undefined)}
-          >
-            ×
-          </button>
+  const handleDelete = async () => {
+    try {
+      await deleteProject(project.id);
+      setConfirmDelete(false);
+      await onMutate();
+    } catch (err) {
+      alert(t('error_delete') + err);
+    }
+  };
+
+  return (
+    <>
+      <div className="actions-cell" ref={ref}>
+        <button
+          className="actions-btn"
+          onClick={(e) => {
+            e.stopPropagation();
+            setIsOpen(!isOpen);
+          }}
+        >
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+            <circle cx="12" cy="5" r="2" />
+            <circle cx="12" cy="12" r="2" />
+            <circle cx="12" cy="19" r="2" />
+          </svg>
+        </button>
+        {isOpen && (
+          <div className="actions-menu">
+            <button
+              className="actions-menu-item"
+              onClick={(e) => {
+                e.stopPropagation();
+                setIsOpen(false);
+                getProject(project.id).then((full) => {
+                  setEditingProject(full);
+                }).catch(() => {
+                  alert('Error loading project');
+                });
+              }}
+            >
+              {t('edit')}
+            </button>
+            <button
+              className="actions-menu-item actions-menu-danger"
+              onClick={(e) => {
+                e.stopPropagation();
+                setIsOpen(false);
+                setConfirmDelete(true);
+              }}
+            >
+              {t('delete')}
+            </button>
+          </div>
         )}
       </div>
-    );
-  }
+      {editingProject && (
+        <ProjectDialog
+          mode="edit"
+          project={editingProject}
+          onClose={() => {
+            setEditingProject(null);
+            onMutate();
+          }}
+        />
+      )}
+      {confirmDelete && (
+        <Dialog title={t('delete')} onClose={() => setConfirmDelete(false)}>
+          <p>{t('confirm_delete_project')}</p>
+          <div className="dialog-actions">
+            <button className="btn" onClick={() => setConfirmDelete(false)}>
+              {t('cancel')}
+            </button>
+            <button className="btn danger" onClick={handleDelete}>
+              {t('delete')}
+            </button>
+          </div>
+        </Dialog>
+      )}
+    </>
+  );
+}
 
-  const textValue = (filterValue as string) ?? '';
-  return (
-    <div className="filter-text-wrap">
+function FilterPopover({ column, onClose }: FilterPopoverProps) {
+  const { t } = useI18n();
+  const ref = useRef<HTMLDivElement>(null);
+  const [pos, setPos] = useState({ top: 0, left: 0 });
+
+  useEffect(() => {
+    const th = document.querySelector(`th[data-col-id="${column.id}"]`);
+    if (th) {
+      const rect = th.getBoundingClientRect();
+      setPos({ top: rect.bottom + 4, left: rect.left });
+    }
+  }, [column]);
+
+  useEffect(() => {
+    function handleClickOutside(e: MouseEvent) {
+      if (ref.current && !ref.current.contains(e.target as Node)) {
+        onClose();
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [onClose]);
+
+  const filterValue = column.getFilterValue();
+
+  const renderFilter = () => {
+    if (column.id === 'status') {
+      return (
+        <select
+          value={(filterValue as string) ?? ''}
+          onChange={(e) => column.setFilterValue(e.target.value || undefined)}
+        >
+          <option value="">{t('all_statuses')}</option>
+          <option value="bozza">{t('status_bozza')}</option>
+          <option value="in_corso">{t('status_in_corso')}</option>
+          <option value="sospeso">{t('status_sospeso')}</option>
+          <option value="completato">{t('status_completato')}</option>
+          <option value="archiviato">{t('status_archiviato')}</option>
+        </select>
+      );
+    }
+
+    if (column.id === 'contract_date') {
+      const range = (filterValue as { from?: string; to?: string }) ?? {};
+      return (
+        <div className="filter-date-range">
+          <DatePicker
+            value={range.from ?? ''}
+            onChange={(val) =>
+              column.setFilterValue({
+                from: val || undefined,
+                to: range.to,
+              })
+            }
+          />
+          <span className="filter-date-sep">–</span>
+          <DatePicker
+            value={range.to ?? ''}
+            onChange={(val) =>
+              column.setFilterValue({
+                from: range.from,
+                to: val || undefined,
+              })
+            }
+          />
+        </div>
+      );
+    }
+
+    return (
       <input
         type="text"
-        value={textValue}
+        value={(filterValue as string) ?? ''}
         onChange={(e) => column.setFilterValue(e.target.value || undefined)}
         placeholder={t('search_placeholder')}
+        autoFocus
       />
-      {textValue && (
+    );
+  };
+
+  return (
+    <div className="filter-popover" ref={ref} style={{ top: pos.top, left: pos.left }}>
+      {renderFilter()}
+      <div className="filter-popover-footer">
         <button
-          className="filter-clear-btn"
-          onClick={() => column.setFilterValue(undefined)}
+          className="filter-popover-clear"
+          onClick={() => {
+            column.setFilterValue(undefined);
+            onClose();
+          }}
         >
-          ×
+          {t('clear_filters')}
         </button>
-      )}
+      </div>
     </div>
   );
 }
@@ -130,21 +271,7 @@ export default function ProjectTable({
   const { t } = useI18n();
   const [sorting, setSorting] = useState<SortingState>([]);
   const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
-  const [openMenuId, setOpenMenuId] = useState<string | null>(null);
-  const [editingProject, setEditingProject] = useState<ProjectSummary | null>(
-    null
-  );
-  const menuRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    function handleClickOutside(e: MouseEvent) {
-      if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
-        setOpenMenuId(null);
-      }
-    }
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, []);
+  const [openFilterCol, setOpenFilterCol] = useState<string | null>(null);
 
   const statusLabel = (status: string): string => {
     const map: Record<string, string> = {
@@ -201,72 +328,13 @@ export default function ProjectTable({
       column.display({
         id: 'actions',
         header: () => t('actions'),
-        cell: (info) => {
-          const project = info.row.original;
-          const isOpen = openMenuId === project.id;
-          return (
-            <div className="actions-cell" ref={isOpen ? menuRef : undefined}>
-              <button
-                className="actions-btn"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  setOpenMenuId(isOpen ? null : project.id);
-                }}
-              >
-                <svg
-                  width="16"
-                  height="16"
-                  viewBox="0 0 24 24"
-                  fill="currentColor"
-                >
-                  <circle cx="12" cy="5" r="2" />
-                  <circle cx="12" cy="12" r="2" />
-                  <circle cx="12" cy="19" r="2" />
-                </svg>
-              </button>
-              {isOpen && (
-                <div className="actions-menu">
-                  <button
-                    className="actions-menu-item"
-                    onClick={async (e) => {
-                      e.stopPropagation();
-                      setOpenMenuId(null);
-                      try {
-                        const full = await getProject(project.id);
-                        setEditingProject(full as any);
-                      } catch {
-                        alert('Error loading project');
-                      }
-                    }}
-                  >
-                    {t('edit')}
-                  </button>
-                  <button
-                    className="actions-menu-item actions-menu-danger"
-                    onClick={async (e) => {
-                      e.stopPropagation();
-                      setOpenMenuId(null);
-                      if (window.confirm(t('confirm_delete_project'))) {
-                        try {
-                          await deleteProject(project.id);
-                          onMutate();
-                        } catch (err) {
-                          alert(t('error_delete') + err);
-                        }
-                      }
-                    }}
-                  >
-                    {t('delete')}
-                  </button>
-                </div>
-              )}
-            </div>
-          );
-        },
+        cell: (info) => (
+          <ActionsCell project={info.row.original} onMutate={onMutate} />
+        ),
         enableSorting: false,
       }),
     ],
-    [t, openMenuId, onMutate]
+    [t, onMutate]
   );
 
   const table = useReactTable({
@@ -283,7 +351,11 @@ export default function ProjectTable({
     getFilteredRowModel: getFilteredRowModel(),
   });
 
-  const filterableColumnIds = ['code', 'name', 'client', 'status', 'contract_date'];
+  const FilterIcon = () => (
+    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3" />
+    </svg>
+  );
 
   return (
     <>
@@ -295,48 +367,59 @@ export default function ProjectTable({
             <thead>
               {table.getHeaderGroups().map((headerGroup) => (
                 <tr key={headerGroup.id}>
-                  {headerGroup.headers.map((header) => (
-                    <th
-                      key={header.id}
-                      className={
-                        header.column.getCanSort() ? 'sortable-th' : ''
-                      }
-                      onClick={header.column.getToggleSortingHandler()}
-                    >
-                      <div className="th-content">
-                        {flexRender(
-                          header.column.columnDef.header,
-                          header.getContext()
-                        )}
-                        {header.column.getCanSort() && (
-                          <span className="sort-icon">
-                            {{
-                              asc: ' ▲',
-                              desc: ' ▼',
-                            }[header.column.getIsSorted() as string] ?? ''}
-                          </span>
-                        )}
-                      </div>
-                    </th>
-                  ))}
+                  {headerGroup.headers.map((header) => {
+                    const isFilterable = FILTERABLE_COLUMNS.includes(header.column.id);
+                    const isActive = hasActiveFilter(header.column);
+                    const isFilterOpen = openFilterCol === header.column.id;
+                    return (
+                      <th
+                        key={header.id}
+                        data-col-id={header.column.id}
+                        className={
+                          header.column.getCanSort() ? 'sortable-th' : ''
+                        }
+                        onClick={header.column.getToggleSortingHandler()}
+                      >
+                        <div className="th-label">
+                          {flexRender(
+                            header.column.columnDef.header,
+                            header.getContext()
+                          )}
+                          {header.column.getCanSort() && (
+                            <span className="sort-icon">
+                              {{
+                                asc: ' ▲',
+                                desc: ' ▼',
+                              }[header.column.getIsSorted() as string] ?? ''}
+                            </span>
+                          )}
+                          {isFilterable && (
+                            <button
+                              className={`th-filter-btn ${isActive ? 'active' : ''}`}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setOpenFilterCol(isFilterOpen ? null : header.column.id);
+                              }}
+                            >
+                              <FilterIcon />
+                            </button>
+                          )}
+                        </div>
+                      </th>
+                    );
+                  })}
                 </tr>
               ))}
-              <tr className="filter-row">
-                {table.getAllColumns().map((col) => (
-                  <td key={col.id}>
-                    {filterableColumnIds.includes(col.id) ? (
-                      <ColumnFilter column={col} />
-                    ) : null}
-                  </td>
-                ))}
-              </tr>
             </thead>
             <tbody>
               {table.getRowModel().rows.map((row) => (
                 <tr
                   key={row.id}
                   className="table-row"
-                  onClick={() => onProjectClick(row.original.id)}
+                  onClick={(e) => {
+                    if ((e.target as HTMLElement).closest('.actions-cell')) return;
+                    onProjectClick(row.original.id);
+                  }}
                 >
                   {row.getVisibleCells().map((cell) => (
                     <td key={cell.id}>
@@ -353,14 +436,10 @@ export default function ProjectTable({
         </div>
       )}
 
-      {editingProject && (
-        <ProjectDialog
-          mode="edit"
-          project={editingProject as any}
-          onClose={() => {
-            setEditingProject(null);
-            onMutate();
-          }}
+      {openFilterCol && (
+        <FilterPopover
+          column={table.getColumn(openFilterCol)!}
+          onClose={() => setOpenFilterCol(null)}
         />
       )}
     </>
