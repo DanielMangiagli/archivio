@@ -73,6 +73,7 @@ pub struct Project {
     pub contract_date: Option<chrono::NaiveDate>,
     pub completion_date: Option<chrono::NaiveDate>,
     pub amount: Option<f64>,
+    pub amount_paid: Option<f64>,
     pub status: ProjectStatus,
     pub phases: Vec<Phase>,
     pub tags: Vec<String>,
@@ -89,7 +90,9 @@ pub struct ProjectSummary {
     pub client: String,
     pub status: ProjectStatus,
     pub contract_date: Option<chrono::NaiveDate>,
+    pub completion_date: Option<chrono::NaiveDate>,
     pub amount: Option<f64>,
+    pub amount_paid: Option<f64>,
     pub file_count: usize,
     pub photo_count: usize,
 }

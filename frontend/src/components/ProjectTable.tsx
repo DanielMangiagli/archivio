@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect, useMemo } from 'react';
+import { useState, useRef, useEffect, useMemo, useCallback } from 'react';
 import {
   useReactTable,
   getCoreRowModel,
@@ -10,6 +10,9 @@ import {
   type ColumnFiltersState,
   type FilterFn,
   type Column,
+  type RowSelectionState,
+  type HeaderContext,
+  type CellContext,
 } from '@tanstack/react-table';
 import { useI18n } from '../i18n';
 import { getProject, deleteProject } from '../api';
@@ -58,6 +61,8 @@ interface ProjectTableProps {
   projects: ProjectSummary[];
   onProjectClick: (id: string) => void;
   onMutate: () => void;
+  rowSelection: RowSelectionState;
+  onRowSelectionChange: React.Dispatch<React.SetStateAction<RowSelectionState>>;
 }
 
 interface FilterPopoverProps {
@@ -267,6 +272,8 @@ export default function ProjectTable({
   projects,
   onProjectClick,
   onMutate,
+  rowSelection,
+  onRowSelectionChange,
 }: ProjectTableProps) {
   const { t } = useI18n();
   const [sorting, setSorting] = useState<SortingState>([]);
@@ -286,6 +293,33 @@ export default function ProjectTable({
 
   const columns = useMemo(
     () => [
+      column.display({
+        id: 'select',
+        header: (info: HeaderContext<ProjectSummary, unknown>) => {
+          const ref = useCallback((el: HTMLInputElement | null) => {
+            if (el) el.indeterminate = info.table.getIsSomePageRowsSelected();
+          }, [info.table]);
+          return (
+            <input
+              type="checkbox"
+              className="table-checkbox"
+              ref={ref}
+              checked={info.table.getIsAllPageRowsSelected()}
+              onChange={info.table.getToggleAllPageRowsSelectedHandler()}
+            />
+          );
+        },
+        cell: (info: CellContext<ProjectSummary, unknown>) => (
+          <input
+            type="checkbox"
+            className="table-checkbox"
+            checked={info.row.getIsSelected()}
+            onChange={info.row.getToggleSelectedHandler()}
+          />
+        ),
+        enableSorting: false,
+        size: 40,
+      }),
       column.accessor('code', {
         header: () => t('code'),
         cell: (info) => (
@@ -319,6 +353,14 @@ export default function ProjectTable({
         header: () => t('amount'),
         cell: (info) => formatAmount(info.getValue()),
       }),
+      column.accessor('amount_paid', {
+        header: () => t('amount_paid'),
+        cell: (info) => formatAmount(info.getValue()),
+      }),
+      column.accessor('completion_date', {
+        header: () => t('completion_date'),
+        cell: (info) => formatDate(info.getValue()),
+      }),
       column.accessor('file_count', {
         header: () => t('files'),
       }),
@@ -340,12 +382,15 @@ export default function ProjectTable({
   const table = useReactTable({
     data: projects,
     columns,
+    getRowId: (row) => row.id,
     state: {
       sorting,
       columnFilters,
+      rowSelection,
     },
     onSortingChange: setSorting,
     onColumnFiltersChange: setColumnFilters,
+    onRowSelectionChange: onRowSelectionChange,
     getCoreRowModel: getCoreRowModel(),
     getSortedRowModel: getSortedRowModel(),
     getFilteredRowModel: getFilteredRowModel(),
@@ -418,6 +463,7 @@ export default function ProjectTable({
                   className="table-row"
                   onClick={(e) => {
                     if ((e.target as HTMLElement).closest('.actions-cell')) return;
+                    if ((e.target as HTMLElement).closest('.table-checkbox')) return;
                     onProjectClick(row.original.id);
                   }}
                 >

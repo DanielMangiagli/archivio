@@ -62,5 +62,7 @@
   "date_from": "Da data",
   "date_to": "A data",
   "clear_filters": "Pulisci filtri",
-  "actions": "Azioni"
+  "actions": "Azioni",
+  "export_csv": "Esporta CSV",
+  "amount_paid": "Importo Pagato"
 }

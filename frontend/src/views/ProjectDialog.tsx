@@ -20,6 +20,7 @@ export default function ProjectDialog({ mode, project, onClose }: ProjectDialogP
   const [contractDate, setContractDate] = useState(project?.contract_date || '');
   const [completionDate, setCompletionDate] = useState(project?.completion_date || '');
   const [amount, setAmount] = useState(project?.amount?.toString() || '');
+  const [amountPaid, setAmountPaid] = useState(project?.amount_paid?.toString() || '');
   const [status, setStatus] = useState(project?.status || 'bozza');
   const [notes, setNotes] = useState(project?.notes || '');
 
@@ -46,6 +47,7 @@ export default function ProjectDialog({ mode, project, onClose }: ProjectDialogP
         contract_date: contractDate || undefined,
         completion_date: completionDate || undefined,
         amount: amount ? parseFloat(amount) : undefined,
+        amount_paid: amountPaid ? parseFloat(amountPaid) : undefined,
         status,
         notes,
       });
@@ -119,6 +121,16 @@ export default function ProjectDialog({ mode, project, onClose }: ProjectDialogP
         </label>
         {mode === 'edit' && (
           <>
+            <label>
+              {t('amount_paid')}
+              <input
+                type="number"
+                step="0.01"
+                min="0"
+                value={amountPaid}
+                onChange={(e) => setAmountPaid(e.target.value)}
+              />
+            </label>
             <label>
               {t('status_label')}
               <select value={status} onChange={(e) => setStatus(e.target.value as Project['status'])}>
