@@ -145,9 +145,24 @@ export default function ProjectDetail({
         <button className="btn" onClick={onBack}>
           {t("back")}
         </button>
-        <h1>
-          {project.code} {project.name}
-        </h1>
+        <div className="project-title">
+          <div className="info-row">
+            <span className="info-label">{t("code")}</span>
+            <EditableField
+              value={project.code}
+              type="text"
+              onSave={(v) => handleFieldSave("code", v)}
+            />
+          </div>
+          <div className="info-row">
+            <span className="info-label">{t("name")}</span>
+            <EditableField
+              value={project.name}
+              type="text"
+              onSave={(v) => handleFieldSave("name", v)}
+            />
+          </div>
+        </div>
         <div className="header-actions">
           <button className="btn danger" onClick={() => setShowDeleteConfirm(true)}>
             {t("delete")}

@@ -66,5 +66,6 @@
   "export_csv": "Export CSV",
   "amount_paid": "Amount Paid",
   "created_at": "Created",
-  "updated_at": "Last modified"
+  "updated_at": "Last modified",
+  "columns": "Columns"
 }

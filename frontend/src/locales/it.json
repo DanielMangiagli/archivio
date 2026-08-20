@@ -66,5 +66,6 @@
   "export_csv": "Esporta CSV",
   "amount_paid": "Importo Pagato",
   "created_at": "Creato il",
-  "updated_at": "Ultima modifica"
+  "updated_at": "Ultima modifica",
+  "columns": "Colonne"
 }
