@@ -1,3 +1,7 @@
+// Copyright 2024 Daniele Mangiagli
+// Licensed under the Apache License, Version 2.0
+// See LICENSE file in the project root for full license information.
+
 use crate::models::{Project, ProjectStatus};
 
 pub fn generate_index(projects: &[Project]) -> String {

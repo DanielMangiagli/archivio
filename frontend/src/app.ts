@@ -1,7 +1,12 @@
-import { listProjects, getProject, createProject, updateProject, deleteProject, addFile, removeFile, generateIndex, openIndex, scanProject, openFileLocation, pickFiles, getProjectMeta } from './api';
-import type { ProjectSummary, Project, FileEntry } from './types';
+// Copyright Daniele Mangiagli
+// Licensed under the PolyForm Noncommercial License 1.0.0
+// See LICENSE file in the project root for full license information.
 
-let currentView: 'dashboard' | 'project' = 'dashboard';
+import { listProjects, getProject, createProject, updateProject, deleteProject, addFile, removeFile, generateIndex, openIndex, scanProject, openFileLocation, pickFiles, getProjectMeta, getSettings, saveSettings } from './api';
+import type { ProjectSummary, Project, FileEntry } from './types';
+import { t, setLang, getLang } from './i18n';
+
+let currentView: 'dashboard' | 'project' | 'settings' = 'dashboard';
 let currentProjectId: string | null = null;
 let currentPhase: string = 'contratto';
 let searchQuery = '';
@@ -19,18 +24,18 @@ function formatAmount(amount: number | null): string {
 
 function formatDate(date: string | null): string {
   if (!date) return '-';
-  return new Date(date + 'T00:00:00').toLocaleDateString('it-IT');
+  return new Date(date + 'T00:00:00').toLocaleDateString(getLang() === 'en' ? 'en-US' : 'it-IT');
 }
 
 function statusLabel(status: string): string {
-  const labels: Record<string, string> = {
-    bozza: 'Bozza',
-    in_corso: 'In Corso',
-    sospeso: 'Sospeso',
-    completato: 'Completato',
-    archiviato: 'Archiviato',
+  const map: Record<string, string> = {
+    bozza: t('status_bozza'),
+    in_corso: t('status_in_corso'),
+    sospeso: t('status_sospeso'),
+    completato: t('status_completato'),
+    archiviato: t('status_archiviato'),
   };
-  return labels[status] || status;
+  return map[status] || status;
 }
 
 function formatSize(bytes: number): string {
@@ -64,7 +69,7 @@ function renderProjectGrid() {
   if (!grid) return;
 
   if (filtered.length === 0) {
-    grid.innerHTML = '<p class="empty">Nessun progetto trovato.</p>';
+    grid.innerHTML = `<p class="empty">${t('no_projects_found')}</p>`;
     return;
   }
 
@@ -92,15 +97,14 @@ function renderProjectGrid() {
         <span>${formatAmount(p.amount)}</span>
       </div>
       <div class="card-footer">
-        <span>${p.file_count} file</span>
-        <span>${p.photo_count} foto</span>
+        <span>${p.file_count} ${t('files')}</span>
+        <span>${p.photo_count} ${t('photos')}</span>
       </div>
     </div>
   `
     )
     .join('');
 
-  // Rebind card click handlers
   grid.querySelectorAll('.project-card').forEach((card) => {
     card.addEventListener('click', () => {
       const id = card.getAttribute('data-id');
@@ -119,19 +123,20 @@ async function renderDashboard() {
   app.innerHTML = `
     <div class="dashboard">
       <header>
-        <h1>Archivio</h1>
+        <h1>${t('app_title')}</h1>
         <div class="header-actions">
-          <input type="text" id="search" placeholder="Cerca..." value="${searchQuery}" />
+          <input type="text" id="search" placeholder="${t('search_placeholder')}" value="${searchQuery}" />
           <select id="statusFilter">
-            <option value="">Tutti gli stati</option>
-            <option value="bozza" ${statusFilter === 'bozza' ? 'selected' : ''}>Bozza</option>
-            <option value="in_corso" ${statusFilter === 'in_corso' ? 'selected' : ''}>In Corso</option>
-            <option value="sospeso" ${statusFilter === 'sospeso' ? 'selected' : ''}>Sospeso</option>
-            <option value="completato" ${statusFilter === 'completato' ? 'selected' : ''}>Completato</option>
-            <option value="archiviato" ${statusFilter === 'archiviato' ? 'selected' : ''}>Archiviato</option>
+            <option value="">${t('all_statuses')}</option>
+            <option value="bozza" ${statusFilter === 'bozza' ? 'selected' : ''}>${t('status_bozza')}</option>
+            <option value="in_corso" ${statusFilter === 'in_corso' ? 'selected' : ''}>${t('status_in_corso')}</option>
+            <option value="sospeso" ${statusFilter === 'sospeso' ? 'selected' : ''}>${t('status_sospeso')}</option>
+            <option value="completato" ${statusFilter === 'completato' ? 'selected' : ''}>${t('status_completato')}</option>
+            <option value="archiviato" ${statusFilter === 'archiviato' ? 'selected' : ''}>${t('status_archiviato')}</option>
           </select>
-          <button id="btnNew" class="btn primary">+ Nuovo Progetto</button>
-          <button id="btnIndex" class="btn">Genera Indice</button>
+          <button id="btnNew" class="btn primary">${t('new_project')}</button>
+          <button id="btnIndex" class="btn">${t('generate_index')}</button>
+          <button id="btnSettings" class="btn btn-settings" title="${t('settings')}"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg></button>
         </div>
       </header>
       <div class="project-grid"></div>
@@ -140,7 +145,6 @@ async function renderDashboard() {
 
   renderProjectGrid();
 
-  // Bind search — only re-render grid, NOT the header
   $('search').addEventListener('input', (e) => {
     searchQuery = (e.target as HTMLInputElement).value.toLowerCase();
     renderProjectGrid();
@@ -158,8 +162,45 @@ async function renderDashboard() {
       await generateIndex();
       await openIndex();
     } catch (e) {
-      alert('Errore: ' + e);
+      alert('Error: ' + e);
     }
+  });
+
+  $('btnSettings').addEventListener('click', () => renderSettings());
+}
+
+// ---- Settings ----
+
+async function renderSettings() {
+  currentView = 'settings';
+  const settings = await getSettings();
+
+  const app = $('app');
+  app.innerHTML = `
+    <div class="settings-page">
+      <header>
+        <button id="btnBack" class="btn">${t('back')}</button>
+        <h1>${t('settings_title')}</h1>
+      </header>
+      <div class="settings-content">
+        <div class="settings-group">
+          <label class="settings-label">${t('language')}</label>
+          <select id="langSelect" class="settings-input">
+            <option value="it" ${settings.language === 'it' ? 'selected' : ''}>Italiano</option>
+            <option value="en" ${settings.language === 'en' ? 'selected' : ''}>English</option>
+          </select>
+        </div>
+      </div>
+    </div>
+  `;
+
+  $('btnBack').addEventListener('click', () => renderDashboard());
+
+  $('langSelect').addEventListener('change', async (e) => {
+    const lang = (e.target as HTMLSelectElement).value;
+    await saveSettings({ language: lang });
+    setLang(lang as 'it' | 'en');
+    renderDashboard();
   });
 }
 
@@ -170,17 +211,17 @@ function showCreateDialog() {
   overlay.className = 'overlay';
   overlay.innerHTML = `
     <div class="dialog">
-      <h2>Nuovo Progetto</h2>
+      <h2>${t('new_project_title')}</h2>
       <form id="createForm">
-        <label>Codice <input type="text" id="fCode" required placeholder="C-2024-001" /></label>
-        <label>Nome <input type="text" id="fName" required placeholder="Rehabilitation bridge" /></label>
-        <label>Committente <input type="text" id="fClient" required placeholder="Municipality of Milan" /></label>
-        <label>Descrizione <textarea id="fDesc" rows="3"></textarea></label>
-        <label>Data contratto <input type="date" id="fDate" /></label>
-        <label>Importo <input type="number" id="fAmount" step="0.01" min="0" /></label>
+        <label>${t('code')} <input type="text" id="fCode" required placeholder="${t('code_placeholder')}" /></label>
+        <label>${t('name')} <input type="text" id="fName" required placeholder="${t('name_placeholder')}" /></label>
+        <label>${t('client')} <input type="text" id="fClient" required placeholder="${t('client_placeholder')}" /></label>
+        <label>${t('description_label')} <textarea id="fDesc" rows="3"></textarea></label>
+        <label>${t('contract_date_label')} <input type="date" id="fDate" /></label>
+        <label>${t('amount_label')} <input type="number" id="fAmount" step="0.01" min="0" /></label>
         <div class="dialog-actions">
-          <button type="button" class="btn" id="btnCancel">Annulla</button>
-          <button type="submit" class="btn primary">Crea</button>
+          <button type="button" class="btn" id="btnCancel">${t('cancel')}</button>
+          <button type="submit" class="btn primary">${t('create')}</button>
         </div>
       </form>
     </div>
@@ -219,7 +260,7 @@ async function renderProjectDetail(id: string) {
   currentView = 'project';
   currentProjectId = id;
 
-  const project = await getProject(id);
+  const project = await scanProject(id);
   const phase = project.phases.find((p) => p.id === currentPhase) || project.phases[0];
   currentPhase = phase.id;
 
@@ -228,34 +269,34 @@ async function renderProjectDetail(id: string) {
   let html = `
     <div class="project-detail">
       <header>
-        <button id="btnBack" class="btn">← Indietro</button>
+        <button id="btnBack" class="btn">${t('back')}</button>
         <h1>${project.code} — ${project.name}</h1>
         <div class="header-actions">
-          <button id="btnEdit" class="btn">Modifica</button>
-          <button id="btnDelete" class="btn danger">Elimina</button>
+          <button id="btnEdit" class="btn">${t('edit')}</button>
+          <button id="btnDelete" class="btn danger">${t('delete')}</button>
         </div>
       </header>
 
       <div class="project-info">
         <div class="info-row">
-          <span class="info-label">Committente</span>
+          <span class="info-label">${t('client')}</span>
           <span>${project.client}</span>
         </div>
         <div class="info-row">
-          <span class="info-label">Data contratto</span>
+          <span class="info-label">${t('contract_date')}</span>
           <span>${formatDate(project.contract_date)}</span>
         </div>
         <div class="info-row">
-          <span class="info-label">Importo</span>
+          <span class="info-label">${t('amount')}</span>
           <span>${formatAmount(project.amount)}</span>
         </div>
         <div class="info-row">
-          <span class="info-label">Stato</span>
+          <span class="info-label">${t('status')}</span>
           <span class="status status-${project.status}">${statusLabel(project.status)}</span>
         </div>
-        ${project.description ? `<div class="info-row"><span class="info-label">Descrizione</span><span>${project.description}</span></div>` : ''}
-        ${project.notes ? `<div class="info-row"><span class="info-label">Note</span><span>${project.notes}</span></div>` : ''}
-        ${project.tags.length > 0 ? `<div class="info-row"><span class="info-label">Tag</span><span>${project.tags.map((t) => `<span class="tag">${t}</span>`).join(' ')}</span></div>` : ''}
+        ${project.description ? `<div class="info-row"><span class="info-label">${t('description')}</span><span>${project.description}</span></div>` : ''}
+        ${project.notes ? `<div class="info-row"><span class="info-label">${t('notes')}</span><span>${project.notes}</span></div>` : ''}
+        ${project.tags.length > 0 ? `<div class="info-row"><span class="info-label">${t('tags')}</span><span>${project.tags.map((tag) => `<span class="tag">${tag}</span>`).join(' ')}</span></div>` : ''}
       </div>
 
       <div class="tabs">
@@ -268,8 +309,8 @@ async function renderProjectDetail(id: string) {
 
       <div class="phase-content" id="phaseContent">
         <div class="phase-toolbar">
-          <button id="btnSync" class="btn">Sincronizza Cartella</button>
-          <button id="btnAddFile" class="btn primary">+ Aggiungi File</button>
+          <button id="btnSync" class="btn">${t('sync_folder')}</button>
+          <button id="btnAddFile" class="btn primary">${t('add_file')}</button>
         </div>
         <div class="file-list" id="fileList">
           ${renderFileList(sortedFiles)}
@@ -285,7 +326,7 @@ async function renderProjectDetail(id: string) {
   $('btnEdit').addEventListener('click', () => showEditDialog(project));
 
   $('btnDelete').addEventListener('click', async () => {
-    if (confirm('Eliminare questo progetto?')) {
+    if (confirm(t('confirm_delete_project'))) {
       await deleteProject(id);
       renderDashboard();
     }
@@ -312,7 +353,6 @@ async function renderProjectDetail(id: string) {
         for (const filePath of filePaths) {
           await addFile(id, currentPhase, filePath);
         }
-        // After adding, scan to pick up thumbnails/exif, then refresh
         const refreshed = await scanProject(id);
         const newPhase = refreshed.phases.find((p) => p.id === currentPhase) || refreshed.phases[0];
         currentPhase = newPhase.id;
@@ -341,7 +381,6 @@ async function renderProjectDetail(id: string) {
       if (!filePath) return;
       try {
         await removeFile(id, currentPhase, filePath);
-        // Reload from metadata only (no rescan) so deleted files stay gone
         const project = await getProjectMeta(id);
         const phase = project.phases.find((p) => p.id === currentPhase) || project.phases[0];
         currentPhase = phase.id;
@@ -352,12 +391,12 @@ async function renderProjectDetail(id: string) {
         });
       } catch (err) {
         console.error('Delete failed:', err);
-        alert('Errore eliminazione: ' + err);
+        alert(t('error_delete') + err);
       }
     });
   });
 
-  // Click on file name → open containing folder
+  // Click on file name -> open containing folder
   document.querySelectorAll('.file-name').forEach((el) => {
     el.addEventListener('click', async (e) => {
       e.stopPropagation();
@@ -375,7 +414,7 @@ function escapeAttr(s: string): string {
 
 function renderFileList(files: FileEntry[]): string {
   if (files.length === 0) {
-    return '<p class="empty">Nessun file in questa fase.</p>';
+    return `<p class="empty">${t('no_files')}</p>`;
   }
 
   return files
@@ -384,15 +423,15 @@ function renderFileList(files: FileEntry[]): string {
     <div class="file-item">
       <div class="file-icon">${fileIcon(f.mime_type)}</div>
       <div class="file-info">
-        <span class="file-name" data-file-path="${escapeAttr(f.path)}" title="Clicca per aprire la cartella">${f.name}</span>
+        <span class="file-name" data-file-path="${escapeAttr(f.path)}" title="${t('click_to_open_folder')}">${f.name}</span>
         <span class="file-meta">${formatSize(f.size)} ${f.mime_type ? `· ${f.mime_type}` : ''}</span>
         ${
           f.photo_metadata?.date_taken
-            ? `<span class="file-meta">Scattata: ${formatDate(f.photo_metadata.date_taken)}</span>`
+            ? `<span class="file-meta">${formatDate(f.photo_metadata.date_taken)}</span>`
             : ''
         }
       </div>
-      <button class="btn-remove-file btn danger small" data-file-path="${escapeAttr(f.path)}" title="Elimina">×</button>
+      <button class="btn-remove-file btn danger small" data-file-path="${escapeAttr(f.path)}" title="${t('delete_file_title')}">&times;</button>
     </div>
   `
     )
@@ -400,13 +439,13 @@ function renderFileList(files: FileEntry[]): string {
 }
 
 function fileIcon(mime: string | null): string {
-  if (!mime) return '📄';
-  if (mime.startsWith('image/')) return '🖼️';
-  if (mime === 'application/pdf') return '📕';
-  if (mime.includes('word') || mime.includes('document')) return '📘';
-  if (mime.includes('excel') || mime.includes('sheet')) return '📗';
-  if (mime.includes('zip')) return '📦';
-  return '📄';
+  if (!mime) return '\u{1F4C4}';
+  if (mime.startsWith('image/')) return '\u{1F5BC}';
+  if (mime === 'application/pdf') return '\u{1F4D5}';
+  if (mime.includes('word') || mime.includes('document')) return '\u{1F4D8}';
+  if (mime.includes('excel') || mime.includes('sheet')) return '\u{1F4D7}';
+  if (mime.includes('zip')) return '\u{1F4E6}';
+  return '\u{1F4C4}';
 }
 
 // ---- Edit Dialog ----
@@ -416,28 +455,28 @@ function showEditDialog(project: Project) {
   overlay.className = 'overlay';
   overlay.innerHTML = `
     <div class="dialog">
-      <h2>Modifica Progetto</h2>
+      <h2>${t('edit_project_title')}</h2>
       <form id="editForm">
-        <label>Codice <input type="text" id="eCode" value="${project.code}" required /></label>
-        <label>Nome <input type="text" id="eName" value="${project.name}" required /></label>
-        <label>Committente <input type="text" id="eClient" value="${project.client}" required /></label>
-        <label>Descrizione <textarea id="eDesc" rows="3">${project.description}</textarea></label>
-        <label>Data contratto <input type="date" id="eDate" value="${project.contract_date || ''}" /></label>
-        <label>Data completamento <input type="date" id="eCompDate" value="${project.completion_date || ''}" /></label>
-        <label>Importo <input type="number" id="eAmount" step="0.01" min="0" value="${project.amount || ''}" /></label>
-        <label>Stato
+        <label>${t('code')} <input type="text" id="eCode" value="${project.code}" required /></label>
+        <label>${t('name')} <input type="text" id="eName" value="${project.name}" required /></label>
+        <label>${t('client')} <input type="text" id="eClient" value="${project.client}" required /></label>
+        <label>${t('description_label')} <textarea id="eDesc" rows="3">${project.description}</textarea></label>
+        <label>${t('contract_date_label')} <input type="date" id="eDate" value="${project.contract_date || ''}" /></label>
+        <label>${t('completion_date')} <input type="date" id="eCompDate" value="${project.completion_date || ''}" /></label>
+        <label>${t('amount_label')} <input type="number" id="eAmount" step="0.01" min="0" value="${project.amount || ''}" /></label>
+        <label>${t('status_label')}
           <select id="eStatus">
-            <option value="bozza" ${project.status === 'bozza' ? 'selected' : ''}>Bozza</option>
-            <option value="in_corso" ${project.status === 'in_corso' ? 'selected' : ''}>In Corso</option>
-            <option value="sospeso" ${project.status === 'sospeso' ? 'selected' : ''}>Sospeso</option>
-            <option value="completato" ${project.status === 'completato' ? 'selected' : ''}>Completato</option>
-            <option value="archiviato" ${project.status === 'archiviato' ? 'selected' : ''}>Archiviato</option>
+            <option value="bozza" ${project.status === 'bozza' ? 'selected' : ''}>${t('status_bozza')}</option>
+            <option value="in_corso" ${project.status === 'in_corso' ? 'selected' : ''}>${t('status_in_corso')}</option>
+            <option value="sospeso" ${project.status === 'sospeso' ? 'selected' : ''}>${t('status_sospeso')}</option>
+            <option value="completato" ${project.status === 'completato' ? 'selected' : ''}>${t('status_completato')}</option>
+            <option value="archiviato" ${project.status === 'archiviato' ? 'selected' : ''}>${t('status_archiviato')}</option>
           </select>
         </label>
-        <label>Note <textarea id="eNotes" rows="3">${project.notes}</textarea></label>
+        <label>${t('notes_label')} <textarea id="eNotes" rows="3">${project.notes}</textarea></label>
         <div class="dialog-actions">
-          <button type="button" class="btn" id="btnCancelEdit">Annulla</button>
-          <button type="submit" class="btn primary">Salva</button>
+          <button type="button" class="btn" id="btnCancelEdit">${t('cancel')}</button>
+          <button type="submit" class="btn primary">${t('save')}</button>
         </div>
       </form>
     </div>
@@ -472,6 +511,13 @@ function showEditDialog(project: Project) {
 
 // ---- Init ----
 
-document.addEventListener('DOMContentLoaded', () => {
+document.addEventListener('DOMContentLoaded', async () => {
+  // Load saved language
+  try {
+    const settings = await getSettings();
+    setLang(settings.language as 'it' | 'en');
+  } catch {
+    // Use default Italian
+  }
   renderDashboard();
 });

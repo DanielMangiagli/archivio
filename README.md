@@ -115,4 +115,4 @@ Archivio/
 
 ## License
 
-MIT
+[Apache License 2.0](LICENSE) — free to use for any purpose. Attribution is required for commercial use.

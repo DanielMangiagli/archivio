@@ -1,3 +1,7 @@
+// Copyright 2024 Daniele Mangiagli
+// Licensed under the Apache License, Version 2.0
+// See LICENSE file in the project root for full license information.
+
 export interface PhotoMetadata {
   width: number | null;
   height: number | null;
@@ -60,4 +64,8 @@ export interface ProjectSummary {
   amount: number | null;
   file_count: number;
   photo_count: number;
+}
+
+export interface Settings {
+  language: string;
 }
