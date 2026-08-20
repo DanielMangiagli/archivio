@@ -70,6 +70,18 @@ body {
   font-size: 0.8rem;
 }
 
+.btn-settings {
+  padding: 0.5rem 0.6rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.btn-settings svg {
+  width: 18px;
+  height: 18px;
+}
+
 /* ---- Dashboard ---- */
 
 .dashboard {
@@ -409,4 +421,56 @@ body {
   justify-content: flex-end;
   gap: 0.75rem;
   margin-top: 1.5rem;
+}
+
+/* ---- Settings Page ---- */
+
+.settings-page {
+  max-width: 800px;
+  margin: 0 auto;
+  padding: 2rem;
+}
+
+.settings-page header {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  margin-bottom: 2rem;
+}
+
+.settings-page h1 {
+  font-size: 1.4rem;
+}
+
+.settings-content {
+  background: var(--surface);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  padding: 1.5rem;
+}
+
+.settings-group {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.75rem 0;
+  border-bottom: 1px solid var(--border);
+}
+
+.settings-group:last-child {
+  border-bottom: none;
+}
+
+.settings-label {
+  font-weight: 500;
+  font-size: 0.95rem;
+}
+
+.settings-input {
+  padding: 0.4rem 0.75rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  font-size: 0.9rem;
+  background: var(--surface);
+  min-width: 150px;
 }

@@ -1,6 +1,11 @@
+// Copyright Daniele Mangiagli
+// Licensed under the PolyForm Noncommercial License 1.0.0
+// See LICENSE file in the project root for full license information.
+
 use crate::error::AppResult;
 use crate::indexer;
 use crate::models::{default_phases, FileEntry, Project, ProjectStatus, ProjectSummary};
+use crate::settings::Settings;
 use crate::storage::Storage;
 use chrono::{NaiveDate, Utc};
 use std::fs;
@@ -11,6 +16,8 @@ use uuid::Uuid;
 
 pub struct AppState {
     pub storage: Mutex<Storage>,
+    pub settings: Mutex<Settings>,
+    pub settings_path: Mutex<PathBuf>,
 }
 
 // ---- Project CRUD ----
@@ -429,4 +436,26 @@ pub fn pick_files() -> AppResult<Vec<String>> {
 pub fn get_project_meta(state: State<'_, AppState>, id: String) -> AppResult<Project> {
     let storage = state.storage.lock().unwrap();
     storage.load_project_by_id(&id)
+}
+
+// ---- Settings ----
+
+#[tauri::command]
+pub fn get_settings(state: State<'_, AppState>) -> AppResult<Settings> {
+    let settings = state.settings.lock().unwrap();
+    Ok(settings.clone())
+}
+
+#[tauri::command]
+pub fn save_settings(
+    state: State<'_, AppState>,
+    language: Option<String>,
+) -> AppResult<Settings> {
+    let settings_path = state.settings_path.lock().unwrap().clone();
+    let mut settings = state.settings.lock().unwrap();
+    if let Some(lang) = language {
+        settings.language = lang;
+    }
+    settings.save(&settings_path)?;
+    Ok(settings.clone())
 }

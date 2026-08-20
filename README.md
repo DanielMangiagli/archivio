@@ -115,4 +115,4 @@ Archivio/
 
 ## License
 
-MIT
+[PolyForm Noncommercial License 1.0.0](LICENSE) — free for personal, educational, and non-commercial use. Commercial use and reselling are not permitted.

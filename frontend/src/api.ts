@@ -1,3 +1,7 @@
+// Copyright Daniele Mangiagli
+// Licensed under the PolyForm Noncommercial License 1.0.0
+// See LICENSE file in the project root for full license information.
+
 import { invoke } from '@tauri-apps/api/core';
 import type { Project, ProjectSummary, FileEntry } from './types';
 
@@ -103,4 +107,14 @@ export async function pickFiles(): Promise<string[]> {
 
 export async function getProjectMeta(id: string): Promise<Project> {
   return invoke('get_project_meta', { id });
+}
+
+export async function getSettings(): Promise<{ language: string }> {
+  return invoke('get_settings');
+}
+
+export async function saveSettings(params: {
+  language?: string;
+}): Promise<{ language: string }> {
+  return invoke('save_settings', params);
 }
