@@ -1,10 +1,9 @@
-import { useCallback, useEffect, useState } from "react";
-import { generateIndex, listProjects, openIndex } from "../api";
-import DatePicker from "../components/DatePicker";
-import ProjectCard from "../components/ProjectCard";
-import { useI18n } from "../i18n";
-import type { ProjectSummary } from "../types";
-import ProjectDialog from "./ProjectDialog";
+import { useCallback, useState } from 'react';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { generateIndex, listProjects, openIndex } from '../api';
+import { useI18n } from '../i18n';
+import ProjectTable from '../components/ProjectTable';
+import ProjectDialog from './ProjectDialog';
 
 interface DashboardProps {
   onProjectClick: (id: string) => void;
@@ -16,100 +15,44 @@ export default function Dashboard({
   onSettingsClick,
 }: DashboardProps) {
   const { t } = useI18n();
-  const [projects, setProjects] = useState<ProjectSummary[]>([]);
-  const [searchQuery, setSearchQuery] = useState("");
-  const [statusFilter, setStatusFilter] = useState("");
-  const [dateFrom, setDateFrom] = useState("");
-  const [dateTo, setDateTo] = useState("");
+  const queryClient = useQueryClient();
   const [showCreateDialog, setShowCreateDialog] = useState(false);
 
-  const loadProjects = useCallback(async () => {
-    const list = await listProjects();
-    setProjects(list);
-  }, []);
-
-  useEffect(() => {
-    loadProjects();
-  }, [loadProjects]);
-
-  const filtered = projects.filter((p) => {
-    const matchSearch =
-      !searchQuery ||
-      p.code.toLowerCase().includes(searchQuery) ||
-      p.name.toLowerCase().includes(searchQuery) ||
-      p.client.toLowerCase().includes(searchQuery);
-    const matchStatus = !statusFilter || p.status === statusFilter;
-    let matchDate = true;
-    if (dateFrom && p.contract_date) {
-      matchDate = matchDate && p.contract_date >= dateFrom;
-    } else if (dateFrom) {
-      matchDate = false;
-    }
-    if (dateTo && p.contract_date) {
-      matchDate = matchDate && p.contract_date <= dateTo;
-    } else if (dateTo) {
-      matchDate = false;
-    }
-    return matchSearch && matchStatus && matchDate;
+  const { data: projects = [] } = useQuery({
+    queryKey: ['projects'],
+    queryFn: listProjects,
   });
-
-  const handleClearFilters = () => {
-    setSearchQuery("");
-    setStatusFilter("");
-    setDateFrom("");
-    setDateTo("");
-  };
 
   const handleGenerateIndex = async () => {
     try {
       await generateIndex();
       await openIndex();
     } catch (e) {
-      alert("Error: " + e);
+      alert('Error: ' + e);
     }
   };
+
+  const handleMutate = useCallback(() => {
+    queryClient.invalidateQueries({ queryKey: ['projects'] });
+  }, [queryClient]);
 
   return (
     <div className="dashboard">
       <header>
-        <h1>{t("app_title")}</h1>
+        <h1>{t('app_title')}</h1>
         <div className="header-actions">
-          <input
-            type="text"
-            placeholder={t("search_placeholder")}
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value.toLowerCase())}
-          />
-          <select
-            value={statusFilter}
-            onChange={(e) => setStatusFilter(e.target.value)}
-          >
-            <option value="">{t("all_statuses")}</option>
-            <option value="bozza">{t("status_bozza")}</option>
-            <option value="in_corso">{t("status_in_corso")}</option>
-            <option value="sospeso">{t("status_sospeso")}</option>
-            <option value="completato">{t("status_completato")}</option>
-            <option value="archiviato">{t("status_archiviato")}</option>
-          </select>
-          <div className="date-range">
-            <DatePicker value={dateFrom} onChange={setDateFrom} />
-            <DatePicker value={dateTo} onChange={setDateTo} />
-          </div>
-          <button className="btn" onClick={handleClearFilters}>
-            {t("clear_filters")}
-          </button>
           <button
             className="btn primary"
             onClick={() => setShowCreateDialog(true)}
           >
-            {t("new_project")}
+            {t('new_project')}
           </button>
           <button className="btn" onClick={handleGenerateIndex}>
-            {t("generate_index")}
+            {t('generate_index')}
           </button>
           <button
             className="btn btn-settings"
-            title={t("settings")}
+            title={t('settings')}
             onClick={onSettingsClick}
           >
             <svg
@@ -128,25 +71,17 @@ export default function Dashboard({
           </button>
         </div>
       </header>
-      <div className="project-grid">
-        {filtered.length === 0 ? (
-          <p className="empty">{t("no_projects_found")}</p>
-        ) : (
-          filtered.map((p) => (
-            <ProjectCard
-              key={p.id}
-              project={p}
-              onClick={() => onProjectClick(p.id)}
-            />
-          ))
-        )}
-      </div>
+      <ProjectTable
+        projects={projects}
+        onProjectClick={onProjectClick}
+        onMutate={handleMutate}
+      />
       {showCreateDialog && (
         <ProjectDialog
           mode="create"
           onClose={() => {
             setShowCreateDialog(false);
-            loadProjects();
+            handleMutate();
           }}
         />
       )}

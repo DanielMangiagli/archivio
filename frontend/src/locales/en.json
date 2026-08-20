@@ -61,5 +61,6 @@
   "scanned": "Scanned",
   "date_from": "From date",
   "date_to": "To date",
-  "clear_filters": "Clear filters"
+  "clear_filters": "Clear filters",
+  "actions": "Actions"
 }

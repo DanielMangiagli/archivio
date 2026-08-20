@@ -21,7 +21,9 @@ export default function DatePicker({ value, onChange }: DatePickerProps) {
     }
     return new Date();
   });
+  const [dropdownPos, setDropdownPos] = useState({ top: 0, left: 0 });
   const containerRef = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<HTMLButtonElement>(null);
 
   const months = lang === 'en' ? MONTHS_EN : MONTHS_IT;
   const days = lang === 'en' ? DAYS_EN : DAYS_IT;
@@ -92,9 +94,16 @@ export default function DatePicker({ value, onChange }: DatePickerProps) {
   return (
     <div className="dp" ref={containerRef}>
       <button
+        ref={inputRef}
         className="dp-input"
         type="button"
-        onClick={() => setIsOpen(!isOpen)}
+        onClick={() => {
+          if (!isOpen && inputRef.current) {
+            const rect = inputRef.current.getBoundingClientRect();
+            setDropdownPos({ top: rect.bottom + 4, left: rect.left });
+          }
+          setIsOpen(!isOpen);
+        }}
       >
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
           <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/>
@@ -107,7 +116,10 @@ export default function DatePicker({ value, onChange }: DatePickerProps) {
         </span>
       </button>
       {isOpen && (
-        <div className="dp-dropdown dp-open">
+        <div
+          className="dp-dropdown dp-open"
+          style={{ top: dropdownPos.top, left: dropdownPos.left }}
+        >
           <div className="dp-header">
             <button
               className="dp-nav"
