@@ -58,5 +58,8 @@
   "language": "Language",
   "archive_root": "Archive folder",
   "settings_saved": "Settings saved.",
-  "scanned": "Scanned"
+  "scanned": "Scanned",
+  "date_from": "From date",
+  "date_to": "To date",
+  "clear_filters": "Clear filters"
 }

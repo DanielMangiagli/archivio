@@ -123,6 +123,199 @@ body {
   min-width: 200px;
 }
 
+.date-range {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.date-sep {
+  color: var(--text-muted);
+  font-weight: 500;
+  font-size: 0.9rem;
+}
+
+/* ---- Custom Date Picker ---- */
+
+.dp {
+  position: relative;
+}
+
+.dp-input {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.45rem 0.65rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  font-size: 0.85rem;
+  font-family: inherit;
+  color: var(--text);
+  background: var(--surface);
+  cursor: pointer;
+  min-width: 140px;
+  transition: border-color 0.15s;
+}
+
+.dp-input:hover {
+  border-color: #bbb;
+}
+
+.dp-input:focus {
+  outline: none;
+  border-color: var(--primary);
+  box-shadow: 0 0 0 2px rgba(26, 26, 46, 0.1);
+}
+
+.dp-input svg {
+  flex-shrink: 0;
+  opacity: 0.45;
+}
+
+.dp-input-text {
+  color: var(--text-muted);
+}
+
+.dp-input-text.dp-has-value {
+  color: var(--text);
+}
+
+.dp-dropdown {
+  display: none;
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  z-index: 100;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12);
+  padding: 0.6rem;
+  width: 260px;
+  user-select: none;
+}
+
+.dp-dropdown.dp-open {
+  display: block;
+}
+
+.dp-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 0.5rem;
+}
+
+.dp-nav {
+  background: none;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  width: 26px;
+  height: 26px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  font-size: 1.1rem;
+  color: var(--text);
+  font-weight: 600;
+  transition: background 0.1s;
+}
+
+.dp-nav:hover {
+  background: var(--bg);
+}
+
+.dp-title {
+  font-weight: 600;
+  font-size: 0.9rem;
+  text-transform: capitalize;
+}
+
+.dp-days-header {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  text-align: center;
+  margin-bottom: 0.25rem;
+}
+
+.dp-dow {
+  font-size: 0.7rem;
+  font-weight: 600;
+  color: var(--text-muted);
+  padding: 0.2rem 0;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.dp-grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 1px;
+}
+
+.dp-day {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 30px;
+  border: none;
+  background: none;
+  border-radius: 4px;
+  font-size: 0.82rem;
+  cursor: pointer;
+  color: var(--text);
+  margin: 0 auto;
+  transition: background 0.1s;
+}
+
+.dp-day:hover:not(.dp-empty) {
+  background: var(--bg);
+}
+
+.dp-day.dp-empty {
+  cursor: default;
+}
+
+.dp-day.dp-today-marker {
+  font-weight: 700;
+  color: var(--primary);
+}
+
+.dp-day.dp-selected {
+  background: var(--primary);
+  color: #fff;
+}
+
+.dp-day.dp-selected:hover {
+  background: var(--primary-hover);
+}
+
+.dp-footer {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 0.5rem;
+  padding-top: 0.4rem;
+  border-top: 1px solid var(--border);
+}
+
+.dp-footer button {
+  background: none;
+  border: none;
+  font-size: 0.8rem;
+  font-family: inherit;
+  color: var(--primary);
+  cursor: pointer;
+  padding: 0.2rem 0.4rem;
+  border-radius: 3px;
+  font-weight: 500;
+}
+
+.dp-footer button:hover {
+  background: var(--bg);
+}
+
 /* ---- Project Grid ---- */
 
 .project-grid {
@@ -414,6 +607,22 @@ body {
 
 .dialog textarea {
   resize: vertical;
+}
+
+.dialog-field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  margin-bottom: 1rem;
+}
+
+.dialog-field-label {
+  font-size: 0.9rem;
+  color: var(--text-muted);
+}
+
+.dialog-field .dp-input {
+  width: 100%;
 }
 
 .dialog-actions {
