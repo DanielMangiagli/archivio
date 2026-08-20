@@ -6,12 +6,13 @@ import {
   pickFiles,
   removeFile,
   scanProject,
+  updateProject,
 } from "../api";
 import Dialog from "../components/Dialog";
+import EditableField from "../components/EditableField";
 import FileList from "../components/FileList";
 import { useI18n } from "../i18n";
 import type { FileEntry, Project } from "../types";
-import ProjectDialog from "./ProjectDialog";
 
 interface ProjectDetailProps {
   projectId: string;
@@ -25,7 +26,6 @@ export default function ProjectDetail({
   const { t } = useI18n();
   const [project, setProject] = useState<Project | null>(null);
   const [currentPhase, setCurrentPhase] = useState<string>("contratto");
-  const [showEditDialog, setShowEditDialog] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 
   const loadProject = useCallback(async () => {
@@ -42,6 +42,17 @@ export default function ProjectDetail({
   useEffect(() => {
     loadProject();
   }, [loadProject]);
+
+  const handleFieldSave = async (field: string, value: any) => {
+    if (!project) return;
+    try {
+      await updateProject(project.id, { [field]: value });
+      setProject({ ...project, [field]: value });
+    } catch (err) {
+      console.error("Save failed:", err);
+      alert(t("error_delete") + err);
+    }
+  };
 
   const handleSync = async () => {
     await loadProject();
@@ -104,6 +115,11 @@ export default function ProjectDetail({
     return new Date(date + "T00:00:00").toLocaleDateString("it-IT");
   }
 
+  function formatDateTime(date: string | null): string {
+    if (!date) return "-";
+    return new Date(date).toLocaleString("it-IT");
+  }
+
   const statusLabel = (status: string): string => {
     const map: Record<string, string> = {
       bozza: t("status_bozza"),
@@ -115,6 +131,14 @@ export default function ProjectDetail({
     return map[status] || status;
   };
 
+  const statusOptions = [
+    { value: "bozza", label: t("status_bozza") },
+    { value: "in_corso", label: t("status_in_corso") },
+    { value: "sospeso", label: t("status_sospeso") },
+    { value: "completato", label: t("status_completato") },
+    { value: "archiviato", label: t("status_archiviato") },
+  ];
+
   return (
     <div className="project-detail">
       <header>
@@ -125,9 +149,6 @@ export default function ProjectDetail({
           {project.code} {project.name}
         </h1>
         <div className="header-actions">
-          <button className="btn" onClick={() => setShowEditDialog(true)}>
-            {t("edit")}
-          </button>
           <button className="btn danger" onClick={() => setShowDeleteConfirm(true)}>
             {t("delete")}
           </button>
@@ -137,40 +158,76 @@ export default function ProjectDetail({
       <div className="project-info">
         <div className="info-row">
           <span className="info-label">{t("client")}</span>
-          <span>{project.client}</span>
+          <EditableField
+            value={project.client}
+            type="text"
+            onSave={(v) => handleFieldSave("client", v)}
+          />
         </div>
         <div className="info-row">
           <span className="info-label">{t("contract_date")}</span>
-          <span>{formatDate(project.contract_date)}</span>
+          <EditableField
+            value={project.contract_date}
+            type="date"
+            formatDisplay={formatDate}
+            onSave={(v) => handleFieldSave("contract_date", v)}
+          />
         </div>
         <div className="info-row">
           <span className="info-label">{t("completion_date")}</span>
-          <span>{formatDate(project.completion_date)}</span>
+          <EditableField
+            value={project.completion_date}
+            type="date"
+            formatDisplay={formatDate}
+            onSave={(v) => handleFieldSave("completion_date", v)}
+          />
         </div>
         <div className="info-row">
           <span className="info-label">{t("amount")}</span>
-          <span>{formatAmount(project.amount)}</span>
+          <EditableField
+            value={project.amount}
+            type="number"
+            formatDisplay={formatAmount}
+            onSave={(v) => handleFieldSave("amount", v)}
+          />
+        </div>
+        <div className="info-row">
+          <span className="info-label">{t("amount_paid")}</span>
+          <EditableField
+            value={project.amount_paid}
+            type="number"
+            formatDisplay={formatAmount}
+            onSave={(v) => handleFieldSave("amount_paid", v)}
+          />
         </div>
         <div className="info-row">
           <span className="info-label">{t("status")}</span>
-          <span className={`status status-${project.status}`}>
-            {statusLabel(project.status)}
-          </span>
+          <EditableField
+            value={project.status}
+            type="select"
+            onSelectOptions={statusOptions}
+            formatDisplay={(v) => statusLabel(v)}
+            onSave={(v) => handleFieldSave("status", v)}
+          />
         </div>
-        {project.description && (
-          <div className="info-row">
-            <span className="info-label">{t("description")}</span>
-            <span>{project.description}</span>
-          </div>
-        )}
-        {project.notes && (
-          <div className="info-row">
-            <span className="info-label">{t("notes")}</span>
-            <span>{project.notes}</span>
-          </div>
-        )}
+        <div className="info-row info-row-wide">
+          <span className="info-label">{t("description")}</span>
+          <EditableField
+            value={project.description}
+            type="textarea"
+            onSave={(v) => handleFieldSave("description", v)}
+          />
+        </div>
+        <div className="info-row info-row-wide">
+          <span className="info-label">{t("notes")}</span>
+          <EditableField
+            value={project.notes}
+            type="textarea"
+            onSave={(v) => handleFieldSave("notes", v)}
+          />
+        </div>
         {project.tags.length > 0 && (
-          <div className="info-row">
+          <div className="info-row info-row-wide">
             <span className="info-label">{t("tags")}</span>
             <span>
               {project.tags.map((tag) => (
@@ -181,6 +238,14 @@ export default function ProjectDetail({
             </span>
           </div>
         )}
+        <div className="info-row">
+          <span className="info-label">{t("created_at")}</span>
+          <span>{formatDateTime(project.created_at)}</span>
+        </div>
+        <div className="info-row">
+          <span className="info-label">{t("updated_at")}</span>
+          <span>{formatDateTime(project.updated_at)}</span>
+        </div>
       </div>
 
       <div className="tabs">
@@ -213,16 +278,6 @@ export default function ProjectDetail({
         />
       </div>
 
-      {showEditDialog && (
-        <ProjectDialog
-          mode="edit"
-          project={project}
-          onClose={() => {
-            setShowEditDialog(false);
-            loadProject();
-          }}
-        />
-      )}
       {showDeleteConfirm && (
         <Dialog
           title={t("delete")}

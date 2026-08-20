@@ -64,5 +64,7 @@
   "clear_filters": "Clear filters",
   "actions": "Actions",
   "export_csv": "Export CSV",
-  "amount_paid": "Amount Paid"
+  "amount_paid": "Amount Paid",
+  "created_at": "Created",
+  "updated_at": "Last modified"
 }
