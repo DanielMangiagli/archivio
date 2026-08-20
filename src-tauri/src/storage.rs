@@ -85,8 +85,19 @@ impl Storage {
 
     pub fn save_metadata(&self, project: &Project) -> AppResult<()> {
         let path = self.metadata_path(project);
+        let parent = path.parent().ok_or_else(|| AppError::InvalidPath("Cannot get parent directory".into()))?;
+        fs::create_dir_all(parent)?;
         let json = serde_json::to_string_pretty(project)?;
         fs::write(path, json)?;
+        Ok(())
+    }
+
+    pub fn rename_project_dir(&self, old_folder: &str, new_folder: &str) -> AppResult<()> {
+        let old_dir = self.projects_dir().join(old_folder);
+        let new_dir = self.projects_dir().join(new_folder);
+        if old_dir.exists() && old_dir != new_dir {
+            fs::rename(&old_dir, &new_dir)?;
+        }
         Ok(())
     }
 

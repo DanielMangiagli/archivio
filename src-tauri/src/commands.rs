@@ -109,6 +109,7 @@ pub fn update_project(
 ) -> AppResult<Project> {
     let storage = state.storage.lock().unwrap();
     let mut project = storage.load_project_by_id(&id)?;
+    let old_folder = project.folder_name();
 
     if let Some(v) = request.code { project.code = v; }
     if let Some(v) = request.name { project.name = v; }
@@ -135,6 +136,12 @@ pub fn update_project(
     if let Some(v) = request.notes { project.notes = v; }
 
     project.updated_at = Utc::now();
+
+    let new_folder = project.folder_name();
+    if old_folder != new_folder {
+        storage.rename_project_dir(&old_folder, &new_folder)?;
+    }
+
     storage.save_metadata(&project)?;
     Ok(project)
 }
