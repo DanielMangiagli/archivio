@@ -64,5 +64,7 @@
   "clear_filters": "Pulisci filtri",
   "actions": "Azioni",
   "export_csv": "Esporta CSV",
-  "amount_paid": "Importo Pagato"
+  "amount_paid": "Importo Pagato",
+  "created_at": "Creato il",
+  "updated_at": "Ultima modifica"
 }

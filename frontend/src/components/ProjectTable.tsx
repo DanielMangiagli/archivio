@@ -15,10 +15,9 @@ import {
   type CellContext,
 } from '@tanstack/react-table';
 import { useI18n } from '../i18n';
-import { getProject, deleteProject } from '../api';
-import type { Project, ProjectSummary } from '../types';
+import { updateProject, deleteProject } from '../api';
+import type { ProjectSummary } from '../types';
 import Dialog from './Dialog';
-import ProjectDialog from '../views/ProjectDialog';
 import DatePicker from './DatePicker';
 
 const column = createColumnHelper<ProjectSummary>();
@@ -47,6 +46,8 @@ function formatDate(date: string | null): string {
 
 const FILTERABLE_COLUMNS = ['code', 'name', 'client', 'status', 'contract_date'];
 
+const EDITABLE_COLUMNS = ['code', 'name', 'client', 'status', 'contract_date', 'amount', 'amount_paid', 'completion_date'];
+
 function hasActiveFilter(col: Column<any, any>): boolean {
   const val = col.getFilterValue();
   if (val === undefined || val === '') return false;
@@ -56,6 +57,122 @@ function hasActiveFilter(col: Column<any, any>): boolean {
   }
   return true;
 }
+
+interface CellEdit {
+  rowId: string;
+  colId: string;
+}
+
+interface EditCellProps {
+  value: any;
+  colId: string;
+  rowId: string;
+  onSave: (rowId: string, colId: string, value: any) => void;
+  onCancel: () => void;
+}
+
+function EditCell({ value, colId, rowId, onSave, onCancel }: EditCellProps) {
+  const { t } = useI18n();
+  const [draft, setDraft] = useState(value ?? '');
+  const inputRef = useRef<HTMLInputElement | HTMLSelectElement>(null);
+
+  useEffect(() => {
+    if (inputRef.current) {
+      inputRef.current.focus();
+      if ('select' in inputRef.current) {
+        inputRef.current.select();
+      }
+    }
+  }, []);
+
+  const commit = () => {
+    if (colId === 'amount' || colId === 'amount_paid') {
+      const num = draft === '' || draft === null ? null : parseFloat(draft);
+      onSave(rowId, colId, num);
+    } else {
+      onSave(rowId, colId, draft || null);
+    }
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      commit();
+    }
+    if (e.key === 'Escape') {
+      onCancel();
+    }
+  };
+
+  if (colId === 'status') {
+    return (
+      <select
+        ref={inputRef as React.RefObject<HTMLSelectElement>}
+        className="inline-editor"
+        value={draft ?? ''}
+        onChange={(e) => {
+          setDraft(e.target.value);
+          onSave(rowId, colId, e.target.value || null);
+        }}
+        onBlur={commit}
+        onKeyDown={handleKeyDown}
+      >
+        <option value="bozza">{t('status_bozza')}</option>
+        <option value="in_corso">{t('status_in_corso')}</option>
+        <option value="sospeso">{t('status_sospeso')}</option>
+        <option value="completato">{t('status_completato')}</option>
+        <option value="archiviato">{t('status_archiviato')}</option>
+      </select>
+    );
+  }
+
+  if (colId === 'contract_date' || colId === 'completion_date') {
+    return (
+      <div className="inline-editor-date">
+        <DatePicker
+          value={draft ?? ''}
+          onChange={(val) => {
+            onSave(rowId, colId, val || null);
+          }}
+        />
+      </div>
+    );
+  }
+
+  if (colId === 'amount' || colId === 'amount_paid') {
+    return (
+      <input
+        ref={inputRef as React.RefObject<HTMLInputElement>}
+        type="number"
+        step="0.01"
+        className="inline-editor"
+        value={draft ?? ''}
+        onChange={(e) => setDraft(e.target.value)}
+        onBlur={commit}
+        onKeyDown={handleKeyDown}
+      />
+    );
+  }
+
+  return (
+    <input
+      ref={inputRef as React.RefObject<HTMLInputElement>}
+      type="text"
+      className="inline-editor"
+      value={draft ?? ''}
+      onChange={(e) => setDraft(e.target.value)}
+      onBlur={commit}
+      onKeyDown={handleKeyDown}
+    />
+  );
+}
+
+const PencilIcon = () => (
+  <svg className="edit-pencil" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z" />
+    <path d="m15 5 4 4" />
+  </svg>
+);
 
 interface ProjectTableProps {
   projects: ProjectSummary[];
@@ -72,21 +189,7 @@ interface FilterPopoverProps {
 
 function ActionsCell({ project, onMutate }: { project: ProjectSummary; onMutate: () => void }) {
   const { t } = useI18n();
-  const [isOpen, setIsOpen] = useState(false);
-  const [editingProject, setEditingProject] = useState<Project | null>(null);
   const [confirmDelete, setConfirmDelete] = useState(false);
-  const ref = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    if (!isOpen) return;
-    function handleClickOutside(e: MouseEvent) {
-      if (ref.current && !ref.current.contains(e.target as Node)) {
-        setIsOpen(false);
-      }
-    }
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, [isOpen]);
 
   const handleDelete = async () => {
     try {
@@ -100,59 +203,22 @@ function ActionsCell({ project, onMutate }: { project: ProjectSummary; onMutate:
 
   return (
     <>
-      <div className="actions-cell" ref={ref}>
-        <button
-          className="actions-btn"
-          onClick={(e) => {
-            e.stopPropagation();
-            setIsOpen(!isOpen);
-          }}
-        >
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
-            <circle cx="12" cy="5" r="2" />
-            <circle cx="12" cy="12" r="2" />
-            <circle cx="12" cy="19" r="2" />
-          </svg>
-        </button>
-        {isOpen && (
-          <div className="actions-menu">
-            <button
-              className="actions-menu-item"
-              onClick={(e) => {
-                e.stopPropagation();
-                setIsOpen(false);
-                getProject(project.id).then((full) => {
-                  setEditingProject(full);
-                }).catch(() => {
-                  alert('Error loading project');
-                });
-              }}
-            >
-              {t('edit')}
-            </button>
-            <button
-              className="actions-menu-item actions-menu-danger"
-              onClick={(e) => {
-                e.stopPropagation();
-                setIsOpen(false);
-                setConfirmDelete(true);
-              }}
-            >
-              {t('delete')}
-            </button>
-          </div>
-        )}
-      </div>
-      {editingProject && (
-        <ProjectDialog
-          mode="edit"
-          project={editingProject}
-          onClose={() => {
-            setEditingProject(null);
-            onMutate();
-          }}
-        />
-      )}
+      <button
+        className="delete-btn"
+        title={t('delete')}
+        onClick={(e) => {
+          e.stopPropagation();
+          setConfirmDelete(true);
+        }}
+      >
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <path d="M3 6h18" />
+          <path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6" />
+          <path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2" />
+          <line x1="10" y1="11" x2="10" y2="17" />
+          <line x1="14" y1="11" x2="14" y2="17" />
+        </svg>
+      </button>
       {confirmDelete && (
         <Dialog title={t('delete')} onClose={() => setConfirmDelete(false)}>
           <p>{t('confirm_delete_project')}</p>
@@ -279,6 +345,7 @@ export default function ProjectTable({
   const [sorting, setSorting] = useState<SortingState>([]);
   const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
   const [openFilterCol, setOpenFilterCol] = useState<string | null>(null);
+  const [editingCell, setEditingCell] = useState<CellEdit | null>(null);
 
   const statusLabel = (status: string): string => {
     const map: Record<string, string> = {
@@ -290,6 +357,22 @@ export default function ProjectTable({
     };
     return map[status] || status;
   };
+
+  const handleSave = useCallback(async (rowId: string, colId: string, value: any) => {
+    setEditingCell(null);
+    const projectId = projects.find((p) => p.id === rowId)?.id;
+    if (!projectId) return;
+    try {
+      await updateProject(projectId, { [colId]: value });
+      await onMutate();
+    } catch (err) {
+      alert('Error saving: ' + err);
+    }
+  }, [projects, onMutate]);
+
+  const handleCancel = useCallback(() => {
+    setEditingCell(null);
+  }, []);
 
   const columns = useMemo(
     () => [
@@ -322,44 +405,194 @@ export default function ProjectTable({
       }),
       column.accessor('code', {
         header: () => t('code'),
-        cell: (info) => (
-          <span className="table-code">{info.getValue()}</span>
-        ),
+        cell: (info) => {
+          const isEditing = editingCell?.rowId === info.row.id && editingCell?.colId === 'code';
+          if (isEditing) {
+            return (
+              <EditCell
+                value={info.getValue()}
+                colId="code"
+                rowId={info.row.id}
+                onSave={handleSave}
+                onCancel={handleCancel}
+              />
+            );
+          }
+          return (
+            <div className="editable-cell" onClick={(e) => { e.stopPropagation(); setEditingCell({ rowId: info.row.id, colId: 'code' }); }}>
+              <span className="table-code">{info.getValue()}</span>
+              <PencilIcon />
+            </div>
+          );
+        },
       }),
       column.accessor('name', {
         header: () => t('name'),
+        cell: (info) => {
+          const isEditing = editingCell?.rowId === info.row.id && editingCell?.colId === 'name';
+          if (isEditing) {
+            return (
+              <EditCell
+                value={info.getValue()}
+                colId="name"
+                rowId={info.row.id}
+                onSave={handleSave}
+                onCancel={handleCancel}
+              />
+            );
+          }
+          return (
+            <div className="editable-cell" onClick={(e) => { e.stopPropagation(); setEditingCell({ rowId: info.row.id, colId: 'name' }); }}>
+              {info.getValue()}
+              <PencilIcon />
+            </div>
+          );
+        },
       }),
       column.accessor('client', {
         header: () => t('client'),
+        cell: (info) => {
+          const isEditing = editingCell?.rowId === info.row.id && editingCell?.colId === 'client';
+          if (isEditing) {
+            return (
+              <EditCell
+                value={info.getValue()}
+                colId="client"
+                rowId={info.row.id}
+                onSave={handleSave}
+                onCancel={handleCancel}
+              />
+            );
+          }
+          return (
+            <div className="editable-cell" onClick={(e) => { e.stopPropagation(); setEditingCell({ rowId: info.row.id, colId: 'client' }); }}>
+              {info.getValue()}
+              <PencilIcon />
+            </div>
+          );
+        },
       }),
       column.accessor('status', {
         header: () => t('status'),
         cell: (info) => {
           const val = info.getValue();
+          const isEditing = editingCell?.rowId === info.row.id && editingCell?.colId === 'status';
+          if (isEditing) {
+            return (
+              <EditCell
+                value={val}
+                colId="status"
+                rowId={info.row.id}
+                onSave={handleSave}
+                onCancel={handleCancel}
+              />
+            );
+          }
           return (
-            <span className={`status status-${val}`}>
-              {statusLabel(val)}
-            </span>
+            <div className="editable-cell" onClick={(e) => { e.stopPropagation(); setEditingCell({ rowId: info.row.id, colId: 'status' }); }}>
+              <span className={`status status-${val}`}>{statusLabel(val)}</span>
+              <PencilIcon />
+            </div>
           );
         },
         filterFn: 'equals',
       }),
       column.accessor('contract_date', {
         header: () => t('contract_date'),
-        cell: (info) => formatDate(info.getValue()),
+        cell: (info) => {
+          const val = info.getValue();
+          const isEditing = editingCell?.rowId === info.row.id && editingCell?.colId === 'contract_date';
+          if (isEditing) {
+            return (
+              <EditCell
+                value={val}
+                colId="contract_date"
+                rowId={info.row.id}
+                onSave={handleSave}
+                onCancel={handleCancel}
+              />
+            );
+          }
+          return (
+            <div className="editable-cell" onClick={(e) => { e.stopPropagation(); setEditingCell({ rowId: info.row.id, colId: 'contract_date' }); }}>
+              {formatDate(val)}
+              <PencilIcon />
+            </div>
+          );
+        },
         filterFn: dateRangeFilter,
       }),
       column.accessor('amount', {
         header: () => t('amount'),
-        cell: (info) => formatAmount(info.getValue()),
+        cell: (info) => {
+          const val = info.getValue();
+          const isEditing = editingCell?.rowId === info.row.id && editingCell?.colId === 'amount';
+          if (isEditing) {
+            return (
+              <EditCell
+                value={val}
+                colId="amount"
+                rowId={info.row.id}
+                onSave={handleSave}
+                onCancel={handleCancel}
+              />
+            );
+          }
+          return (
+            <div className="editable-cell" onClick={(e) => { e.stopPropagation(); setEditingCell({ rowId: info.row.id, colId: 'amount' }); }}>
+              {formatAmount(val)}
+              <PencilIcon />
+            </div>
+          );
+        },
       }),
       column.accessor('amount_paid', {
         header: () => t('amount_paid'),
-        cell: (info) => formatAmount(info.getValue()),
+        cell: (info) => {
+          const val = info.getValue();
+          const isEditing = editingCell?.rowId === info.row.id && editingCell?.colId === 'amount_paid';
+          if (isEditing) {
+            return (
+              <EditCell
+                value={val}
+                colId="amount_paid"
+                rowId={info.row.id}
+                onSave={handleSave}
+                onCancel={handleCancel}
+              />
+            );
+          }
+          return (
+            <div className="editable-cell" onClick={(e) => { e.stopPropagation(); setEditingCell({ rowId: info.row.id, colId: 'amount_paid' }); }}>
+              {formatAmount(val)}
+              <PencilIcon />
+            </div>
+          );
+        },
       }),
       column.accessor('completion_date', {
         header: () => t('completion_date'),
-        cell: (info) => formatDate(info.getValue()),
+        cell: (info) => {
+          const val = info.getValue();
+          const isEditing = editingCell?.rowId === info.row.id && editingCell?.colId === 'completion_date';
+          if (isEditing) {
+            return (
+              <EditCell
+                value={val}
+                colId="completion_date"
+                rowId={info.row.id}
+                onSave={handleSave}
+                onCancel={handleCancel}
+              />
+            );
+          }
+          return (
+            <div className="editable-cell" onClick={(e) => { e.stopPropagation(); setEditingCell({ rowId: info.row.id, colId: 'completion_date' }); }}>
+              {formatDate(val)}
+              <PencilIcon />
+            </div>
+          );
+        },
       }),
       column.accessor('file_count', {
         header: () => t('files'),
@@ -376,7 +609,7 @@ export default function ProjectTable({
         enableSorting: false,
       }),
     ],
-    [t, onMutate]
+    [t, onMutate, editingCell, handleSave, handleCancel]
   );
 
   const table = useReactTable({
@@ -460,10 +693,11 @@ export default function ProjectTable({
               {table.getRowModel().rows.map((row) => (
                 <tr
                   key={row.id}
-                  className="table-row"
+                  className={`table-row ${editingCell?.rowId === row.id ? 'editing-row' : ''}`}
                   onClick={(e) => {
-                    if ((e.target as HTMLElement).closest('.actions-cell')) return;
                     if ((e.target as HTMLElement).closest('.table-checkbox')) return;
+                    if ((e.target as HTMLElement).closest('.editable-cell')) return;
+                    if ((e.target as HTMLElement).closest('.delete-btn')) return;
                     onProjectClick(row.original.id);
                   }}
                 >
