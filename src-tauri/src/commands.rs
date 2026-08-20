@@ -8,11 +8,39 @@ use crate::models::{default_phases, FileEntry, Project, ProjectStatus, ProjectSu
 use crate::settings::Settings;
 use crate::storage::Storage;
 use chrono::{NaiveDate, Utc};
+use serde::Deserialize;
 use std::fs;
 use std::path::{Path, PathBuf};
 use std::sync::Mutex;
 use tauri::State;
 use uuid::Uuid;
+
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub struct CreateProjectRequest {
+    pub code: String,
+    pub name: String,
+    pub client: String,
+    pub description: Option<String>,
+    pub contract_date: Option<String>,
+    pub amount: Option<f64>,
+    pub tags: Option<Vec<String>>,
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub struct UpdateProjectRequest {
+    pub code: Option<String>,
+    pub name: Option<String>,
+    pub client: Option<String>,
+    pub description: Option<String>,
+    pub contract_date: Option<String>,
+    pub completion_date: Option<String>,
+    pub amount: Option<f64>,
+    pub status: Option<String>,
+    pub tags: Option<Vec<String>>,
+    pub notes: Option<String>,
+}
 
 pub struct AppState {
     pub storage: Mutex<Storage>,
@@ -38,29 +66,31 @@ pub fn get_project(state: State<'_, AppState>, id: String) -> AppResult<Project>
 #[tauri::command]
 pub fn create_project(
     state: State<'_, AppState>,
-    code: String,
-    name: String,
-    client: String,
-    description: Option<String>,
-    contract_date: Option<String>,
-    amount: Option<f64>,
-    tags: Option<Vec<String>>,
+    request: CreateProjectRequest,
 ) -> AppResult<Project> {
-    let contract_date_parsed = contract_date
-        .and_then(|d| NaiveDate::parse_from_str(&d, "%Y-%m-%d").ok());
+    eprintln!("[create_project] received request: {:?}", request);
+    let contract_date_parsed = request
+        .contract_date
+        .as_ref()
+        .and_then(|d| {
+            let parsed = NaiveDate::parse_from_str(d, "%Y-%m-%d");
+            eprintln!("[create_project] parsing '{}' -> {:?}", d, parsed);
+            parsed.ok()
+        });
+    eprintln!("[create_project] contract_date_parsed: {:?}", contract_date_parsed);
 
     let mut project = Project {
         id: Uuid::new_v4().to_string(),
-        code,
-        name,
-        client,
-        description: description.unwrap_or_default(),
+        code: request.code,
+        name: request.name,
+        client: request.client,
+        description: request.description.unwrap_or_default(),
         contract_date: contract_date_parsed,
         completion_date: None,
-        amount,
+        amount: request.amount,
         status: ProjectStatus::Bozza,
         phases: default_phases(),
-        tags: tags.unwrap_or_default(),
+        tags: request.tags.unwrap_or_default(),
         notes: String::new(),
         created_at: Utc::now(),
         updated_at: Utc::now(),
@@ -75,32 +105,23 @@ pub fn create_project(
 pub fn update_project(
     state: State<'_, AppState>,
     id: String,
-    code: Option<String>,
-    name: Option<String>,
-    client: Option<String>,
-    description: Option<String>,
-    contract_date: Option<String>,
-    completion_date: Option<String>,
-    amount: Option<f64>,
-    status: Option<String>,
-    tags: Option<Vec<String>>,
-    notes: Option<String>,
+    request: UpdateProjectRequest,
 ) -> AppResult<Project> {
     let storage = state.storage.lock().unwrap();
     let mut project = storage.load_project_by_id(&id)?;
 
-    if let Some(v) = code { project.code = v; }
-    if let Some(v) = name { project.name = v; }
-    if let Some(v) = client { project.client = v; }
-    if let Some(v) = description { project.description = v; }
-    if let Some(v) = contract_date {
+    if let Some(v) = request.code { project.code = v; }
+    if let Some(v) = request.name { project.name = v; }
+    if let Some(v) = request.client { project.client = v; }
+    if let Some(v) = request.description { project.description = v; }
+    if let Some(v) = request.contract_date {
         project.contract_date = NaiveDate::parse_from_str(&v, "%Y-%m-%d").ok();
     }
-    if let Some(v) = completion_date {
+    if let Some(v) = request.completion_date {
         project.completion_date = NaiveDate::parse_from_str(&v, "%Y-%m-%d").ok();
     }
-    if let Some(v) = amount { project.amount = Some(v); }
-    if let Some(v) = status {
+    if let Some(v) = request.amount { project.amount = Some(v); }
+    if let Some(v) = request.status {
         project.status = match v.as_str() {
             "bozza" => ProjectStatus::Bozza,
             "in_corso" => ProjectStatus::InCorso,
@@ -110,8 +131,8 @@ pub fn update_project(
             _ => project.status,
         };
     }
-    if let Some(v) = tags { project.tags = v; }
-    if let Some(v) = notes { project.notes = v; }
+    if let Some(v) = request.tags { project.tags = v; }
+    if let Some(v) = request.notes { project.notes = v; }
 
     project.updated_at = Utc::now();
     storage.save_metadata(&project)?;

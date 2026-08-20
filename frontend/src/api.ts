@@ -22,7 +22,13 @@ export async function createProject(params: {
   amount?: number;
   tags?: string[];
 }): Promise<Project> {
-  return invoke('create_project', params);
+  const cleanParams = Object.fromEntries(
+    Object.entries(params).filter(([, v]) => v !== undefined)
+  );
+  console.log('API createProject invoking with:', cleanParams);
+  const result = await invoke<Project>('create_project', { request: cleanParams });
+  console.log('API createProject response:', result);
+  return result;
 }
 
 export async function updateProject(
@@ -40,7 +46,10 @@ export async function updateProject(
     notes?: string;
   }
 ): Promise<Project> {
-  return invoke('update_project', { id, ...params });
+  const cleanParams = Object.fromEntries(
+    Object.entries(params).filter(([, v]) => v !== undefined)
+  );
+  return invoke('update_project', { id, request: cleanParams });
 }
 
 export async function deleteProject(id: string): Promise<void> {

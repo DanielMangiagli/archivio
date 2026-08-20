@@ -58,5 +58,8 @@
   "language": "Lingua",
   "archive_root": "Cartella Archivio",
   "settings_saved": "Impostazioni salvate.",
-  "scanned": "Scansionato"
+  "scanned": "Scansionato",
+  "date_from": "Da data",
+  "date_to": "A data",
+  "clear_filters": "Pulisci filtri"
 }
