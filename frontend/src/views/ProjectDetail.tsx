@@ -7,6 +7,7 @@ import {
   removeFile,
   scanProject,
 } from "../api";
+import Dialog from "../components/Dialog";
 import FileList from "../components/FileList";
 import { useI18n } from "../i18n";
 import type { FileEntry, Project } from "../types";
@@ -25,6 +26,7 @@ export default function ProjectDetail({
   const [project, setProject] = useState<Project | null>(null);
   const [currentPhase, setCurrentPhase] = useState<string>("contratto");
   const [showEditDialog, setShowEditDialog] = useState(false);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 
   const loadProject = useCallback(async () => {
     const p = await scanProject(projectId);
@@ -70,9 +72,12 @@ export default function ProjectDetail({
   };
 
   const handleDelete = async () => {
-    if (confirm(t("confirm_delete_project"))) {
+    try {
       await deleteProject(projectId);
       onBack();
+    } catch (err) {
+      console.error("Delete project failed:", err);
+      alert(t("error_delete") + err);
     }
   };
 
@@ -119,7 +124,7 @@ export default function ProjectDetail({
           <button className="btn" onClick={() => setShowEditDialog(true)}>
             {t("edit")}
           </button>
-          <button className="btn danger" onClick={handleDelete}>
+          <button className="btn danger" onClick={() => setShowDeleteConfirm(true)}>
             {t("delete")}
           </button>
         </div>
@@ -213,6 +218,22 @@ export default function ProjectDetail({
             loadProject();
           }}
         />
+      )}
+      {showDeleteConfirm && (
+        <Dialog
+          title={t("delete")}
+          onClose={() => setShowDeleteConfirm(false)}
+        >
+          <p>{t("confirm_delete_project")}</p>
+          <div className="dialog-actions">
+            <button className="btn" onClick={() => setShowDeleteConfirm(false)}>
+              {t("cancel")}
+            </button>
+            <button className="btn danger" onClick={handleDelete}>
+              {t("delete")}
+            </button>
+          </div>
+        </Dialog>
       )}
     </div>
   );
