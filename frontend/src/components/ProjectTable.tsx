@@ -8,6 +8,7 @@ import {
   createColumnHelper,
   type SortingState,
   type ColumnFiltersState,
+  type VisibilityState,
   type FilterFn,
   type Column,
   type RowSelectionState,
@@ -344,8 +345,22 @@ export default function ProjectTable({
   const { t } = useI18n();
   const [sorting, setSorting] = useState<SortingState>([]);
   const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
+  const [columnVisibility, setColumnVisibility] = useState<VisibilityState>({});
   const [openFilterCol, setOpenFilterCol] = useState<string | null>(null);
   const [editingCell, setEditingCell] = useState<CellEdit | null>(null);
+  const [showColPicker, setShowColPicker] = useState(false);
+  const colPickerRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!showColPicker) return;
+    function handleClickOutside(e: MouseEvent) {
+      if (colPickerRef.current && !colPickerRef.current.contains(e.target as Node)) {
+        setShowColPicker(false);
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [showColPicker]);
 
   const statusLabel = (status: string): string => {
     const map: Record<string, string> = {
@@ -620,10 +635,12 @@ export default function ProjectTable({
       sorting,
       columnFilters,
       rowSelection,
+      columnVisibility,
     },
     onSortingChange: setSorting,
     onColumnFiltersChange: setColumnFilters,
     onRowSelectionChange: onRowSelectionChange,
+    onColumnVisibilityChange: setColumnVisibility,
     getCoreRowModel: getCoreRowModel(),
     getSortedRowModel: getSortedRowModel(),
     getFilteredRowModel: getFilteredRowModel(),
@@ -640,7 +657,38 @@ export default function ProjectTable({
       {table.getRowModel().rows.length === 0 && columnFilters.length === 0 ? (
         <p className="empty">{t('no_projects_found')}</p>
       ) : (
-        <div className="project-table-wrap">
+        <>
+          <div className="table-toolbar">
+            <div className="col-picker-wrap" ref={colPickerRef}>
+              <button
+                className="btn small"
+                onClick={() => setShowColPicker(!showColPicker)}
+              >
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <rect x="3" y="3" width="7" height="7" /><rect x="14" y="3" width="7" height="7" /><rect x="3" y="14" width="7" height="7" /><rect x="14" y="14" width="7" height="7" />
+                </svg>
+                {t('columns')}
+              </button>
+              {showColPicker && (
+                <div className="col-picker-menu">
+                  {table.getAllLeafColumns().filter((col) => col.id !== 'select' && col.id !== 'actions').map((col) => (
+                    <label key={col.id} className="col-picker-item">
+                      <input
+                        type="checkbox"
+                        className="table-checkbox"
+                        checked={col.getIsVisible()}
+                        onChange={col.getToggleVisibilityHandler()}
+                      />
+                      {typeof col.columnDef.header === 'function'
+                        ? col.columnDef.header({} as any)
+                        : col.columnDef.header}
+                    </label>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+          <div className="project-table-wrap">
           <table className="project-table">
             <thead>
               {table.getHeaderGroups().map((headerGroup) => (
@@ -714,6 +762,7 @@ export default function ProjectTable({
             </tbody>
           </table>
         </div>
+        </>
       )}
 
       {openFilterCol && (
