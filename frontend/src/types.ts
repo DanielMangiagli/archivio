@@ -46,6 +46,7 @@ export interface Project {
   contract_date: string | null;
   completion_date: string | null;
   amount: number | null;
+  amount_paid: number | null;
   status: ProjectStatus;
   phases: Phase[];
   tags: string[];
@@ -61,7 +62,9 @@ export interface ProjectSummary {
   client: string;
   status: ProjectStatus;
   contract_date: string | null;
+  completion_date: string | null;
   amount: number | null;
+  amount_paid: number | null;
   file_count: number;
   photo_count: number;
 }

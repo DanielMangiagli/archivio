@@ -20,6 +20,7 @@ export async function createProject(params: {
   description?: string;
   contract_date?: string;
   amount?: number;
+  amount_paid?: number;
   tags?: string[];
 }): Promise<Project> {
   const cleanParams = Object.fromEntries(
@@ -41,6 +42,7 @@ export async function updateProject(
     contract_date?: string;
     completion_date?: string;
     amount?: number;
+    amount_paid?: number;
     status?: string;
     tags?: string[];
     notes?: string;

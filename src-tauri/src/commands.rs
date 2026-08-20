@@ -37,6 +37,7 @@ pub struct UpdateProjectRequest {
     pub contract_date: Option<String>,
     pub completion_date: Option<String>,
     pub amount: Option<f64>,
+    pub amount_paid: Option<f64>,
     pub status: Option<String>,
     pub tags: Option<Vec<String>>,
     pub notes: Option<String>,
@@ -88,6 +89,7 @@ pub fn create_project(
         contract_date: contract_date_parsed,
         completion_date: None,
         amount: request.amount,
+        amount_paid: None,
         status: ProjectStatus::Bozza,
         phases: default_phases(),
         tags: request.tags.unwrap_or_default(),
@@ -122,6 +124,7 @@ pub fn update_project(
         project.completion_date = NaiveDate::parse_from_str(&v, "%Y-%m-%d").ok();
     }
     if let Some(v) = request.amount { project.amount = Some(v); }
+    if let Some(v) = request.amount_paid { project.amount_paid = Some(v); }
     if let Some(v) = request.status {
         project.status = match v.as_str() {
             "bozza" => ProjectStatus::Bozza,

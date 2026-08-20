@@ -62,5 +62,7 @@
   "date_from": "From date",
   "date_to": "To date",
   "clear_filters": "Clear filters",
-  "actions": "Actions"
+  "actions": "Actions",
+  "export_csv": "Export CSV",
+  "amount_paid": "Amount Paid"
 }

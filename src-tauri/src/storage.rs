@@ -272,7 +272,9 @@ impl Storage {
             client: project.client.clone(),
             status: project.status.clone(),
             contract_date: project.contract_date,
+            completion_date: project.completion_date,
             amount: project.amount,
+            amount_paid: project.amount_paid,
             file_count,
             photo_count,
         }
