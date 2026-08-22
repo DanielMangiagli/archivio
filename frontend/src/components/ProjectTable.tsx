@@ -17,33 +17,17 @@ import {
 } from '@tanstack/react-table';
 import { useI18n } from '../i18n';
 import { updateProject, deleteProject } from '../api';
+import { formatAmount, formatDate, dateRangeFilter } from '../utils';
 import type { ProjectSummary } from '../types';
 import Dialog from './Dialog';
 import DatePicker from './DatePicker';
 
 const column = createColumnHelper<ProjectSummary>();
 
-const dateRangeFilter: FilterFn<any> = (row, columnId, filterValue) => {
+const dateRangeFilterFn: FilterFn<any> = (row, columnId, filterValue) => {
   const date = row.getValue(columnId) as string | null;
-  if (!date) return false;
-  const { from, to } = filterValue as { from?: string; to?: string };
-  if (from && date < from) return false;
-  if (to && date > to) return false;
-  return true;
+  return dateRangeFilter(date, filterValue as { from?: string; to?: string } | undefined);
 };
-
-function formatAmount(amount: number | null): string {
-  if (amount === null) return '-';
-  return new Intl.NumberFormat('it-IT', {
-    style: 'currency',
-    currency: 'EUR',
-  }).format(amount);
-}
-
-function formatDate(date: string | null): string {
-  if (!date) return '-';
-  return new Date(date + 'T00:00:00').toLocaleDateString('it-IT');
-}
 
 const FILTERABLE_COLUMNS = ['code', 'name', 'client', 'status', 'contract_date'];
 
@@ -535,7 +519,7 @@ export default function ProjectTable({
             </div>
           );
         },
-        filterFn: dateRangeFilter,
+        filterFn: dateRangeFilterFn,
       }),
       column.accessor('amount', {
         header: () => t('amount'),

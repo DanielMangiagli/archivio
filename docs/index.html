@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Archivio — Project Archive Management</title>
-  <meta name="description" content="Desktop application for managing and archiving civil engineering projects. Built with Tauri.">
+  <meta name="description" content="Desktop application for managing and archiving project documents. Built with Tauri.">
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
 
@@ -152,6 +152,24 @@
       height: 100%;
       border-radius: 32px;
       box-shadow: 0 8px 40px rgba(233, 69, 96, 0.15);
+    }
+
+    /* ---- Screenshots ---- */
+    .screenshots {
+      padding: 2rem 0 4rem;
+    }
+    .screenshot-showcase {
+      max-width: 900px;
+      margin: 0 auto;
+      border-radius: 16px;
+      overflow: hidden;
+      border: 1px solid var(--border);
+      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.4);
+    }
+    .screenshot-img {
+      width: 100%;
+      height: auto;
+      display: block;
     }
 
     /* ---- Features ---- */
@@ -321,9 +339,9 @@
     <div class="hero-icon">
       <img src="../src-tauri/icons/icon.png" alt="Archivio">
     </div>
-    <span class="hero-badge">v1.0.3</span>
+    <span class="hero-badge">v1.1.0</span>
     <h1>Archivio</h1>
-    <p>Manage and archive civil engineering projects. Organize contracts, execution documents, and payments in one place.</p>
+    <p>Manage and archive your projects. Organize contracts, documents, and payments in one place.</p>
     <div class="hero-buttons">
       <a href="https://github.com/DanielMangiagli/archivio/releases/latest" class="btn btn-primary">Download for Windows</a>
       <a href="https://github.com/DanielMangiagli/archivio" class="btn btn-secondary">View on GitHub</a>
@@ -331,10 +349,18 @@
   </div>
 </section>
 
+<section class="screenshots">
+  <div class="container">
+    <div class="screenshot-showcase">
+      <img src="../screenshots/dashboard.png" alt="Archivio Dashboard" class="screenshot-img">
+    </div>
+  </div>
+</section>
+
 <section class="features" id="features">
   <div class="container">
     <h2 class="section-title">Everything you need</h2>
-    <p class="section-subtitle">Keep your engineering projects organized from contract to completion.</p>
+    <p class="section-subtitle">Keep your projects organized from contract to completion.</p>
     <div class="features-grid">
       <div class="feature-card">
         <div class="feature-icon">📁</div>
@@ -344,7 +370,7 @@
       <div class="feature-card">
         <div class="feature-icon">🗂️</div>
         <h3>Project Phases</h3>
-        <p>Organize files by phase: Contratto, Esecuzione, Pagamento. Each with its own structured folder hierarchy.</p>
+        <p>Organize files by phase: Contract, Execution, Payment. Each with its own structured folder hierarchy.</p>
       </div>
       <div class="feature-card">
         <div class="feature-icon">🖼️</div>

@@ -1,4 +1,5 @@
 import { useI18n } from '../i18n';
+import { formatSize, fileIcon } from '../utils';
 import type { FileEntry } from '../types';
 
 interface FileListProps {
@@ -9,25 +10,9 @@ interface FileListProps {
   onOpenFile: (filePath: string) => void;
 }
 
-function formatSize(bytes: number): string {
-  if (bytes < 1024) return bytes + ' B';
-  if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
-  return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
-}
-
 function formatDate(date: string | null): string {
   if (!date) return '-';
   return new Date(date + 'T00:00:00').toLocaleDateString('it-IT');
-}
-
-function fileIcon(mime: string | null): string {
-  if (!mime) return '\u{1F4C4}';
-  if (mime.startsWith('image/')) return '\u{1F5BC}';
-  if (mime === 'application/pdf') return '\u{1F4D5}';
-  if (mime.includes('word') || mime.includes('document')) return '\u{1F4D8}';
-  if (mime.includes('excel') || mime.includes('sheet')) return '\u{1F4D7}';
-  if (mime.includes('zip')) return '\u{1F4E6}';
-  return '\u{1F4C4}';
 }
 
 function sortFiles(files: FileEntry[]): FileEntry[] {

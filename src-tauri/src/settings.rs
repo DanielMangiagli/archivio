@@ -39,3 +39,60 @@ impl Settings {
         Ok(())
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn default_language_is_italian() {
+        let s = Settings::default();
+        assert_eq!(s.language, "it");
+    }
+
+    #[test]
+    fn save_and_load_roundtrip() {
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("settings.json");
+
+        let settings = Settings {
+            language: "en".to_string(),
+        };
+        settings.save(&path).unwrap();
+
+        let loaded = Settings::load(&path);
+        assert_eq!(loaded.language, "en");
+    }
+
+    #[test]
+    fn load_missing_file_returns_default() {
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("nonexistent.json");
+
+        let loaded = Settings::load(&path);
+        assert_eq!(loaded.language, "it");
+    }
+
+    #[test]
+    fn load_corrupt_file_returns_default() {
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("settings.json");
+        fs::write(&path, "not valid json!!!").unwrap();
+
+        let loaded = Settings::load(&path);
+        assert_eq!(loaded.language, "it");
+    }
+
+    #[test]
+    fn save_creates_file() {
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("settings.json");
+
+        let settings = Settings::default();
+        settings.save(&path).unwrap();
+
+        assert!(path.exists());
+        let loaded = Settings::load(&path);
+        assert_eq!(loaded.language, "it");
+    }
+}

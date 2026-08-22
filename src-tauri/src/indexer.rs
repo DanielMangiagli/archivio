@@ -8,11 +8,11 @@ pub fn generate_index(projects: &[Project]) -> String {
     let mut html = String::with_capacity(32768);
 
     html.push_str(r#"<!DOCTYPE html>
-<html lang="it">
+<html lang="en">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Archivio — Indice Progetti</title>
+<title>Archivio — Project Index</title>
 <style>
 * { margin: 0; padding: 0; box-sizing: border-box; }
 body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background: #f5f5f5; color: #333; padding: 2rem; }
@@ -40,7 +40,7 @@ tr:hover td { background: #f8f9fa; }
 </head>
 <body>
 <h1>Archivio</h1>
-<p class="subtitle">Indice progetti di ingegneria civile — Generato il "#);
+<p class="subtitle">Project document index — Generated on "#);
 
     html.push_str(&chrono::Local::now().format("%d/%m/%Y alle %H:%M").to_string());
 
@@ -183,4 +183,140 @@ fn escape_html(s: &str) -> String {
         .replace('<', "&lt;")
         .replace('>', "&gt;")
         .replace('"', "&quot;")
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::models::{default_phases, Project, ProjectStatus};
+    use chrono::Utc;
+
+    fn make_project(code: &str, name: &str, client: &str, status: ProjectStatus) -> Project {
+        Project {
+            id: "test-id".into(),
+            code: code.to_string(),
+            name: name.to_string(),
+            client: client.to_string(),
+            description: String::new(),
+            contract_date: None,
+            completion_date: None,
+            amount: Some(100000.0),
+            amount_paid: None,
+            status,
+            phases: default_phases(),
+            tags: vec![],
+            notes: String::new(),
+            created_at: Utc::now(),
+            updated_at: Utc::now(),
+        }
+    }
+
+    #[test]
+    fn escape_html_ampersand() {
+        assert_eq!(escape_html("A & B"), "A &amp; B");
+    }
+
+    #[test]
+    fn escape_html_angle_brackets() {
+        assert_eq!(escape_html("<div>"), "&lt;div&gt;");
+    }
+
+    #[test]
+    fn escape_html_quotes() {
+        assert_eq!(escape_html(r#"say "hello""#), "say &quot;hello&quot;");
+    }
+
+    #[test]
+    fn escape_html_noop() {
+        assert_eq!(escape_html("plain text"), "plain text");
+    }
+
+    #[test]
+    fn generate_index_empty() {
+        let html = generate_index(&[]);
+        assert!(html.contains("<!DOCTYPE html>"));
+        assert!(html.contains("0 progetti totali"));
+        assert!(!html.contains("<tr data-status="));
+    }
+
+    #[test]
+    fn generate_index_with_projects() {
+        let projects = vec![
+            make_project("C-001", "Bridge", "Client A", ProjectStatus::Bozza),
+            make_project("C-002", "Road", "Client B", ProjectStatus::Completato),
+        ];
+        let html = generate_index(&projects);
+        assert!(html.contains("2 progetti totali"));
+        assert!(html.contains("C-001"));
+        assert!(html.contains("Bridge"));
+        assert!(html.contains("C-002"));
+        assert!(html.contains("Client A"));
+        assert!(html.contains("Client B"));
+    }
+
+    #[test]
+    fn generate_index_escapes_html_in_data() {
+        let projects = vec![make_project(
+            "C-001",
+            "Bridge <script>alert(1)</script>",
+            "Client & Co",
+            ProjectStatus::Bozza,
+        )];
+        let html = generate_index(&projects);
+        // The project data should be escaped, but the page itself has a <script> for filtering
+        assert!(html.contains("&lt;script&gt;"));
+        assert!(html.contains("Client &amp; Co"));
+    }
+
+    #[test]
+    fn generate_index_contains_search_and_filter() {
+        let html = generate_index(&[]);
+        assert!(html.contains("id=\"search\""));
+        assert!(html.contains("id=\"statusFilter\""));
+        assert!(html.contains("id=\"tbody\""));
+    }
+
+    #[test]
+    fn generate_index_status_classes() {
+        let projects = vec![make_project(
+            "C-001",
+            "Test",
+            "Client",
+            ProjectStatus::InCorso,
+        )];
+        let html = generate_index(&projects);
+        assert!(html.contains("status-in_corso"));
+        assert!(html.contains("In Corso"));
+    }
+
+    #[test]
+    fn generate_index_amount_formatting() {
+        let mut p = make_project("C-001", "Test", "Client", ProjectStatus::Bozza);
+        p.amount = Some(123456.78);
+        let html = generate_index(&[p]);
+        assert!(html.contains("€123456.78"));
+    }
+
+    #[test]
+    fn generate_index_file_and_photo_counts() {
+        let mut p = make_project("C-001", "Test", "Client", ProjectStatus::Bozza);
+        p.phases[0].files.push(crate::models::FileEntry {
+            name: "doc.pdf".into(),
+            path: "doc.pdf".into(),
+            size: 1000,
+            mime_type: Some("application/pdf".into()),
+            created_at: None,
+            photo_metadata: None,
+        });
+        p.phases[1].files.push(crate::models::FileEntry {
+            name: "photo.jpg".into(),
+            path: "photo.jpg".into(),
+            size: 2000,
+            mime_type: Some("image/jpeg".into()),
+            created_at: None,
+            photo_metadata: None,
+        });
+        let html = generate_index(&[p]);
+        assert!(html.contains("1</td>")); // photo count
+    }
 }

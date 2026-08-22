@@ -27,6 +27,7 @@ fn main() {
     let settings = Settings::load(&settings_path);
 
     tauri::Builder::default()
+        .plugin(tauri_plugin_wdio_webdriver::init())
         .manage(AppState {
             storage: Mutex::new(storage),
             settings: Mutex::new(settings),

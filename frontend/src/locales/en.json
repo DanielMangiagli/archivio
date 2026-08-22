@@ -1,6 +1,6 @@
 {
   "app_title": "Archivio",
-  "subtitle": "Civil engineering project index",
+  "subtitle": "Project document index",
   "search_placeholder": "Search...",
   "all_statuses": "All statuses",
   "new_project": "+ New Project",
@@ -26,8 +26,8 @@
   "code": "Code",
   "code_placeholder": "C-2024-001",
   "name": "Name",
-  "name_placeholder": "Rehabilitation bridge",
-  "client_placeholder": "Municipality of Milan",
+  "name_placeholder": "Office renovation",
+  "client_placeholder": "Acme Corp",
   "description_label": "Description",
   "contract_date_label": "Contract date",
   "completion_date": "Completion date",

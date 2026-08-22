@@ -1,6 +1,6 @@
 {
   "app_title": "Archivio",
-  "subtitle": "Indice progetti di ingegneria civile",
+  "subtitle": "Indice documenti progetto",
   "search_placeholder": "Cerca...",
   "all_statuses": "Tutti gli stati",
   "new_project": "+ Nuovo Progetto",
@@ -26,8 +26,8 @@
   "code": "Codice",
   "code_placeholder": "C-2024-001",
   "name": "Nome",
-  "name_placeholder": "Rehabilitation bridge",
-  "client_placeholder": "Municipality of Milan",
+  "name_placeholder": "Ristrutturazione ufficio",
+  "client_placeholder": "Acme Srl",
   "description_label": "Descrizione",
   "contract_date_label": "Data contratto",
   "completion_date": "Data completamento",

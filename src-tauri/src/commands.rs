@@ -448,6 +448,142 @@ pub fn mime_guess(filename: &str) -> Option<String> {
     }
 }
 
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn mime_pdf() {
+        assert_eq!(mime_guess("doc.pdf"), Some("application/pdf".into()));
+    }
+
+    #[test]
+    fn mime_jpg() {
+        assert_eq!(mime_guess("photo.jpg"), Some("image/jpeg".into()));
+    }
+
+    #[test]
+    fn mime_jpeg() {
+        assert_eq!(mime_guess("photo.jpeg"), Some("image/jpeg".into()));
+    }
+
+    #[test]
+    fn mime_png() {
+        assert_eq!(mime_guess("image.png"), Some("image/png".into()));
+    }
+
+    #[test]
+    fn mime_gif() {
+        assert_eq!(mime_guess("anim.gif"), Some("image/gif".into()));
+    }
+
+    #[test]
+    fn mime_bmp() {
+        assert_eq!(mime_guess("bitmap.bmp"), Some("image/bmp".into()));
+    }
+
+    #[test]
+    fn mime_tiff() {
+        assert_eq!(mime_guess("scan.tiff"), Some("image/tiff".into()));
+    }
+
+    #[test]
+    fn mime_tif() {
+        assert_eq!(mime_guess("scan.tif"), Some("image/tiff".into()));
+    }
+
+    #[test]
+    fn mime_doc() {
+        assert_eq!(mime_guess("report.doc"), Some("application/msword".into()));
+    }
+
+    #[test]
+    fn mime_docx() {
+        assert_eq!(
+            mime_guess("report.docx"),
+            Some("application/vnd.openxmlformats-officedocument.wordprocessingml.document".into())
+        );
+    }
+
+    #[test]
+    fn mime_xls() {
+        assert_eq!(mime_guess("data.xls"), Some("application/vnd.ms-excel".into()));
+    }
+
+    #[test]
+    fn mime_xlsx() {
+        assert_eq!(
+            mime_guess("data.xlsx"),
+            Some("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet".into())
+        );
+    }
+
+    #[test]
+    fn mime_dwg() {
+        assert_eq!(mime_guess("plan.dwg"), Some("application/acad".into()));
+    }
+
+    #[test]
+    fn mime_dxf() {
+        assert_eq!(mime_guess("plan.dxf"), Some("application/dxf".into()));
+    }
+
+    #[test]
+    fn mime_txt() {
+        assert_eq!(mime_guess("notes.txt"), Some("text/plain".into()));
+    }
+
+    #[test]
+    fn mime_csv() {
+        assert_eq!(mime_guess("data.csv"), Some("text/csv".into()));
+    }
+
+    #[test]
+    fn mime_zip() {
+        assert_eq!(mime_guess("archive.zip"), Some("application/zip".into()));
+    }
+
+    #[test]
+    fn mime_unknown() {
+        assert_eq!(mime_guess("file.xyz"), None);
+    }
+
+    #[test]
+    fn mime_no_extension() {
+        assert_eq!(mime_guess("Makefile"), None);
+    }
+
+    #[test]
+    fn mime_case_insensitive() {
+        assert_eq!(mime_guess("FILE.PDF"), Some("application/pdf".into()));
+        assert_eq!(mime_guess("Photo.JPG"), Some("image/jpeg".into()));
+    }
+
+    #[test]
+    fn mime_no_extension_dot_only() {
+        assert_eq!(mime_guess("file."), None);
+    }
+
+    #[test]
+    fn mime_request_deserialization() {
+        let json = r#"{"code":"C-001","name":"Test","client":"Client"}"#;
+        let req: CreateProjectRequest = serde_json::from_str(json).unwrap();
+        assert_eq!(req.code, "C-001");
+        assert_eq!(req.name, "Test");
+        assert!(req.description.is_none());
+        assert!(req.amount.is_none());
+    }
+
+    #[test]
+    fn mime_update_request_partial() {
+        let json = r#"{"name":"Updated Name"}"#;
+        let req: UpdateProjectRequest = serde_json::from_str(json).unwrap();
+        assert_eq!(req.name, Some("Updated Name".into()));
+        assert!(req.code.is_none());
+        assert!(req.client.is_none());
+    }
+}
+
 #[tauri::command]
 pub fn pick_files() -> AppResult<Vec<String>> {
     let files = rfd::FileDialog::new()

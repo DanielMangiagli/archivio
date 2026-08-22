@@ -1,6 +1,8 @@
 # Archivio
 
-Desktop application for managing and archiving civil engineering projects. Built with [Tauri 2](https://v2.tauri.app/) (Rust + React).
+Desktop application for managing and archiving project documents. Built with [Tauri 2](https://v2.tauri.app/) (Rust + React).
+
+![Dashboard](screenshots/dashboard.png)
 
 ## Features
 
@@ -15,6 +17,12 @@ Desktop application for managing and archiving civil engineering projects. Built
 - **Click to open** — click a file name to reveal it in the system file manager
 - **Internationalization** — Italian and English UI (switchable from settings)
 - **Cross-platform** — runs on Windows, macOS, and Linux
+
+### Screenshots
+
+| Dashboard | Project Detail | Create Project |
+|-----------|---------------|----------------|
+| ![Dashboard](screenshots/dashboard.png) | ![Project Detail](screenshots/project-detail.png) | ![Create Project](screenshots/create-project.png) |
 
 ## Installation
 
@@ -108,7 +116,7 @@ Projects are stored in `~/Documents/Archivio/` by default:
 Archivio/
 ├── index.html                    # Generated HTML index
 └── projects/
-    ├── C-2024-001_rehabilitation-bridge/
+    ├── C-2024-001_office-renovation/
     │   ├── metadata.json         # Project metadata (JSON)
     │   ├── contratto/
     │   ├── esecuzione/

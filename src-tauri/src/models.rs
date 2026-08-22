@@ -130,3 +130,114 @@ pub fn default_phases() -> Vec<Phase> {
         },
     ]
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use uuid::Uuid;
+
+    fn make_project(code: &str, name: &str) -> Project {
+        Project {
+            id: Uuid::new_v4().to_string(),
+            code: code.to_string(),
+            name: name.to_string(),
+            client: "Test Client".to_string(),
+            description: String::new(),
+            contract_date: None,
+            completion_date: None,
+            amount: None,
+            amount_paid: None,
+            status: ProjectStatus::Bozza,
+            phases: default_phases(),
+            tags: vec![],
+            notes: String::new(),
+            created_at: Utc::now(),
+            updated_at: Utc::now(),
+        }
+    }
+
+    #[test]
+    fn folder_name_basic() {
+        let p = make_project("C-001", "Bridge Rehab");
+        assert_eq!(p.folder_name(), "C-001_bridge-rehab");
+    }
+
+    #[test]
+    fn folder_name_special_chars() {
+        let p = make_project("X-99", "Progetto: Test & Demo!");
+        assert_eq!(p.folder_name(), "X-99_progetto-test--demo");
+    }
+
+    #[test]
+    fn folder_name_unicode() {
+        let p = make_project("IT-01", "Edificio Degrado");
+        assert_eq!(p.folder_name(), "IT-01_edificio-degrado");
+    }
+
+    #[test]
+    fn folder_name_empty_name() {
+        let p = make_project("C-001", "");
+        assert_eq!(p.folder_name(), "C-001_");
+    }
+
+    #[test]
+    fn folder_name_multiple_spaces() {
+        let p = make_project("C-001", "a  b  c");
+        assert_eq!(p.folder_name(), "C-001_a--b--c");
+    }
+
+    #[test]
+    fn default_phases_count() {
+        let phases = default_phases();
+        assert_eq!(phases.len(), 3);
+    }
+
+    #[test]
+    fn default_phases_ids() {
+        let phases = default_phases();
+        let ids: Vec<&str> = phases.iter().map(|p| p.id.as_str()).collect();
+        assert_eq!(ids, vec!["contratto", "esecuzione", "pagamento"]);
+    }
+
+    #[test]
+    fn default_phases_have_empty_files() {
+        let phases = default_phases();
+        for phase in &phases {
+            assert!(phase.files.is_empty());
+        }
+    }
+
+    #[test]
+    fn project_status_display() {
+        assert_eq!(ProjectStatus::Bozza.to_string(), "Bozza");
+        assert_eq!(ProjectStatus::InCorso.to_string(), "In Corso");
+        assert_eq!(ProjectStatus::Sospeso.to_string(), "Sospeso");
+        assert_eq!(ProjectStatus::Completato.to_string(), "Completato");
+        assert_eq!(ProjectStatus::Archiviato.to_string(), "Archiviato");
+    }
+
+    #[test]
+    fn project_status_serde_roundtrip() {
+        let statuses = vec![
+            ProjectStatus::Bozza,
+            ProjectStatus::InCorso,
+            ProjectStatus::Sospeso,
+            ProjectStatus::Completato,
+            ProjectStatus::Archiviato,
+        ];
+        for status in statuses {
+            let json = serde_json::to_value(&status).unwrap();
+            let deserialized: ProjectStatus = serde_json::from_value(json.clone()).unwrap();
+            assert_eq!(status, deserialized);
+        }
+    }
+
+    #[test]
+    fn project_status_serde_values() {
+        assert_eq!(serde_json::to_value(&ProjectStatus::Bozza).unwrap(), "bozza");
+        assert_eq!(serde_json::to_value(&ProjectStatus::InCorso).unwrap(), "in_corso");
+        assert_eq!(serde_json::to_value(&ProjectStatus::Sospeso).unwrap(), "sospeso");
+        assert_eq!(serde_json::to_value(&ProjectStatus::Completato).unwrap(), "completato");
+        assert_eq!(serde_json::to_value(&ProjectStatus::Archiviato).unwrap(), "archiviato");
+    }
+}

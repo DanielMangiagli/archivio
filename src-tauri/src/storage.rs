@@ -356,3 +356,381 @@ fn parse_gps_coord(field: &exif::Value) -> Option<f64> {
     }
     None
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use chrono::Utc;
+    use crate::models::{default_phases, FileEntry, ProjectStatus};
+    use uuid::Uuid;
+
+    fn make_project(code: &str, name: &str) -> Project {
+        Project {
+            id: Uuid::new_v4().to_string(),
+            code: code.to_string(),
+            name: name.to_string(),
+            client: "Test Client".to_string(),
+            description: String::new(),
+            contract_date: None,
+            completion_date: None,
+            amount: None,
+            amount_paid: None,
+            status: ProjectStatus::Bozza,
+            phases: default_phases(),
+            tags: vec![],
+            notes: String::new(),
+            created_at: Utc::now(),
+            updated_at: Utc::now(),
+        }
+    }
+
+    fn make_storage() -> (tempfile::TempDir, Storage) {
+        let dir = tempfile::tempdir().unwrap();
+        let storage = Storage::new(dir.path().to_path_buf());
+        storage.init().unwrap();
+        (dir, storage)
+    }
+
+    #[test]
+    fn new_storage_root() {
+        let dir = tempfile::tempdir().unwrap();
+        let storage = Storage::new(dir.path().to_path_buf());
+        assert_eq!(storage.root(), dir.path());
+    }
+
+    #[test]
+    fn projects_dir_path() {
+        let dir = tempfile::tempdir().unwrap();
+        let storage = Storage::new(dir.path().to_path_buf());
+        assert_eq!(storage.projects_dir(), dir.path().join("projects"));
+    }
+
+    #[test]
+    fn index_path_value() {
+        let dir = tempfile::tempdir().unwrap();
+        let storage = Storage::new(dir.path().to_path_buf());
+        assert_eq!(storage.index_path(), dir.path().join("index.html"));
+    }
+
+    #[test]
+    fn project_dir_path() {
+        let dir = tempfile::tempdir().unwrap();
+        let storage = Storage::new(dir.path().to_path_buf());
+        let p = make_project("C-001", "Bridge");
+        assert_eq!(
+            storage.project_dir(&p),
+            dir.path().join("projects").join("C-001_bridge")
+        );
+    }
+
+    #[test]
+    fn metadata_path_value() {
+        let dir = tempfile::tempdir().unwrap();
+        let storage = Storage::new(dir.path().to_path_buf());
+        let p = make_project("C-001", "Bridge");
+        assert_eq!(
+            storage.metadata_path(&p),
+            dir.path()
+                .join("projects")
+                .join("C-001_bridge")
+                .join("metadata.json")
+        );
+    }
+
+    #[test]
+    fn thumbnail_dir_path() {
+        let dir = tempfile::tempdir().unwrap();
+        let storage = Storage::new(dir.path().to_path_buf());
+        let p = make_project("C-001", "Bridge");
+        assert_eq!(
+            storage.thumbnail_dir(&p, "esecuzione"),
+            dir.path()
+                .join("projects")
+                .join("C-001_bridge")
+                .join("esecuzione")
+                .join("foto")
+                .join("thumb")
+        );
+    }
+
+    #[test]
+    fn init_creates_projects_dir() {
+        let dir = tempfile::tempdir().unwrap();
+        let storage = Storage::new(dir.path().to_path_buf());
+        storage.init().unwrap();
+        assert!(storage.projects_dir().exists());
+    }
+
+    #[test]
+    fn scaffold_creates_directory_tree() {
+        let (_dir, storage) = make_storage();
+        let p = make_project("C-001", "Bridge");
+        storage.scaffold_project(&p).unwrap();
+
+        let base = storage.project_dir(&p);
+        assert!(base.exists());
+        assert!(base.join("contratto").exists());
+        assert!(base.join("contratto").join("documenti").exists());
+        assert!(base.join("esecuzione").exists());
+        assert!(base.join("esecuzione").join("relazioni").exists());
+        assert!(base.join("esecuzione").join("foto").join("originals").exists());
+        assert!(base.join("esecuzione").join("foto").join("thumb").exists());
+        assert!(base.join("esecuzione").join("documenti").exists());
+        assert!(base.join("pagamento").exists());
+        assert!(base.join("pagamento").join("fatture").exists());
+        assert!(base.join("pagamento").join("certificati").exists());
+    }
+
+    #[test]
+    fn scaffold_saves_metadata() {
+        let (_dir, storage) = make_storage();
+        let p = make_project("C-001", "Bridge");
+        storage.scaffold_project(&p).unwrap();
+
+        let meta_path = storage.metadata_path(&p);
+        assert!(meta_path.exists());
+
+        let data = fs::read_to_string(&meta_path).unwrap();
+        let loaded: Project = serde_json::from_str(&data).unwrap();
+        assert_eq!(loaded.code, "C-001");
+        assert_eq!(loaded.name, "Bridge");
+    }
+
+    #[test]
+    fn save_and_load_metadata_roundtrip() {
+        let (_dir, storage) = make_storage();
+        let mut p = make_project("C-001", "Bridge");
+        storage.scaffold_project(&mut p).unwrap();
+
+        p.description = "Updated description".into();
+        p.amount = Some(50000.0);
+        storage.save_metadata(&p).unwrap();
+
+        let loaded = storage.load_project_by_id(&p.id).unwrap();
+        assert_eq!(loaded.description, "Updated description");
+        assert_eq!(loaded.amount, Some(50000.0));
+    }
+
+    #[test]
+    fn list_projects_empty() {
+        let (_dir, storage) = make_storage();
+        let projects = storage.list_projects().unwrap();
+        assert!(projects.is_empty());
+    }
+
+    #[test]
+    fn list_projects_returns_all() {
+        let (_dir, storage) = make_storage();
+        let p1 = make_project("C-001", "Bridge");
+        let p2 = make_project("C-002", "Road");
+        storage.scaffold_project(&p1).unwrap();
+        storage.scaffold_project(&p2).unwrap();
+
+        let projects = storage.list_projects().unwrap();
+        assert_eq!(projects.len(), 2);
+    }
+
+    #[test]
+    fn list_projects_sorted_by_created_at_desc() {
+        let (_dir, storage) = make_storage();
+        let mut p1 = make_project("C-001", "Old");
+        p1.created_at = Utc::now() - chrono::Duration::hours(2);
+        let mut p2 = make_project("C-002", "New");
+        p2.created_at = Utc::now();
+
+        storage.scaffold_project(&p1).unwrap();
+        storage.scaffold_project(&p2).unwrap();
+
+        let projects = storage.list_projects().unwrap();
+        assert_eq!(projects[0].name, "New");
+        assert_eq!(projects[1].name, "Old");
+    }
+
+    #[test]
+    fn load_project_by_id_found() {
+        let (_dir, storage) = make_storage();
+        let p = make_project("C-001", "Bridge");
+        storage.scaffold_project(&p).unwrap();
+
+        let loaded = storage.load_project_by_id(&p.id).unwrap();
+        assert_eq!(loaded.code, "C-001");
+    }
+
+    #[test]
+    fn load_project_by_id_not_found() {
+        let (_dir, storage) = make_storage();
+        let result = storage.load_project_by_id("nonexistent-id");
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn rename_project_dir() {
+        let (_dir, storage) = make_storage();
+        let p = make_project("C-001", "Bridge");
+        storage.scaffold_project(&p).unwrap();
+
+        let old_folder = p.folder_name();
+        let new_folder = "C-001_road".to_string();
+
+        storage.rename_project_dir(&old_folder, &new_folder).unwrap();
+
+        assert!(!storage.projects_dir().join(&old_folder).exists());
+        assert!(storage.projects_dir().join(&new_folder).exists());
+    }
+
+    #[test]
+    fn rename_project_dir_same_name() {
+        let (_dir, storage) = make_storage();
+        let p = make_project("C-001", "Bridge");
+        storage.scaffold_project(&p).unwrap();
+
+        let folder = p.folder_name();
+        storage.rename_project_dir(&folder, &folder).unwrap();
+
+        assert!(storage.projects_dir().join(&folder).exists());
+    }
+
+    #[test]
+    fn delete_project_removes_dir() {
+        let (_dir, storage) = make_storage();
+        let p = make_project("C-001", "Bridge");
+        storage.scaffold_project(&p).unwrap();
+
+        let project_dir = storage.project_dir(&p);
+        assert!(project_dir.exists());
+
+        storage.delete_project(&p).unwrap();
+        assert!(!project_dir.exists());
+    }
+
+    #[test]
+    fn project_summary_counts() {
+        let (_dir, storage) = make_storage();
+        let mut p = make_project("C-001", "Bridge");
+
+        p.phases[0].files.push(FileEntry {
+            name: "doc.pdf".into(),
+            path: "doc.pdf".into(),
+            size: 1000,
+            mime_type: Some("application/pdf".into()),
+            created_at: None,
+            photo_metadata: None,
+        });
+        p.phases[1].files.push(FileEntry {
+            name: "photo.jpg".into(),
+            path: "photo.jpg".into(),
+            size: 2000,
+            mime_type: Some("image/jpeg".into()),
+            created_at: None,
+            photo_metadata: None,
+        });
+        p.phases[1].files.push(FileEntry {
+            name: "photo2.png".into(),
+            path: "photo2.png".into(),
+            size: 3000,
+            mime_type: Some("image/png".into()),
+            created_at: None,
+            photo_metadata: None,
+        });
+
+        let summary = storage.project_summary(&p);
+        assert_eq!(summary.file_count, 3);
+        assert_eq!(summary.photo_count, 2);
+        assert_eq!(summary.code, "C-001");
+    }
+
+    #[test]
+    fn scan_project_files_adds_new() {
+        let (_dir, storage) = make_storage();
+        let mut p = make_project("C-001", "Bridge");
+        storage.scaffold_project(&mut p).unwrap();
+
+        // Create a file on disk
+        let phase_dir = storage.project_dir(&p).join("contratto");
+        fs::write(phase_dir.join("test.pdf"), b"content").unwrap();
+
+        // Scan should pick it up
+        storage.scan_project_files(&mut p).unwrap();
+
+        let phase = p.phases.iter().find(|ph| ph.id == "contratto").unwrap();
+        assert_eq!(phase.files.len(), 1);
+        assert_eq!(phase.files[0].name, "test.pdf");
+    }
+
+    #[test]
+    fn scan_project_files_removes_deleted() {
+        let (_dir, storage) = make_storage();
+        let mut p = make_project("C-001", "Bridge");
+        storage.scaffold_project(&mut p).unwrap();
+
+        // Create and track a file
+        let phase_dir = storage.project_dir(&p).join("contratto");
+        fs::write(phase_dir.join("test.pdf"), b"content").unwrap();
+        storage.scan_project_files(&mut p).unwrap();
+
+        // Delete the file from disk
+        fs::remove_file(phase_dir.join("test.pdf")).unwrap();
+
+        // Scan should remove it
+        storage.scan_project_files(&mut p).unwrap();
+
+        let phase = p.phases.iter().find(|ph| ph.id == "contratto").unwrap();
+        assert!(phase.files.is_empty());
+    }
+
+    #[test]
+    fn scan_project_files_preserves_existing() {
+        let (_dir, storage) = make_storage();
+        let mut p = make_project("C-001", "Bridge");
+        storage.scaffold_project(&mut p).unwrap();
+
+        // Create and track a file
+        let phase_dir = storage.project_dir(&p).join("contratto");
+        fs::write(phase_dir.join("test.pdf"), b"content").unwrap();
+        storage.scan_project_files(&mut p).unwrap();
+
+        // Scan again — should not duplicate
+        storage.scan_project_files(&mut p).unwrap();
+
+        let phase = p.phases.iter().find(|ph| ph.id == "contratto").unwrap();
+        assert_eq!(phase.files.len(), 1);
+    }
+
+    #[test]
+    fn parse_gps_coord_valid() {
+        use exif::Rational;
+
+        let value = exif::Value::Rational(vec![
+            Rational { num: 45, denom: 1 },
+            Rational { num: 30, denom: 1 },
+            Rational { num: 0, denom: 1 },
+        ]);
+        let result = parse_gps_coord(&value);
+        assert!((result.unwrap() - 45.5).abs() < 0.001);
+    }
+
+    #[test]
+    fn parse_gps_coord_wrong_type() {
+        let value = exif::Value::Ascii(vec![]);
+        assert!(parse_gps_coord(&value).is_none());
+    }
+
+    #[test]
+    fn parse_gps_coord_too_few_elements() {
+        use exif::Rational;
+
+        let value = exif::Value::Rational(vec![
+            Rational { num: 45, denom: 1 },
+            Rational { num: 30, denom: 1 },
+        ]);
+        assert!(parse_gps_coord(&value).is_none());
+    }
+
+    #[test]
+    fn list_projects_nonexistent_dir() {
+        let dir = tempfile::tempdir().unwrap();
+        let storage = Storage::new(dir.path().join("nonexistent"));
+        let projects = storage.list_projects().unwrap();
+        assert!(projects.is_empty());
+    }
+}
