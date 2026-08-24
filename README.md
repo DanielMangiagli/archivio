@@ -10,6 +10,7 @@ Desktop application for managing and archiving project documents. Built with [Ta
 - **Column visibility** — show/hide columns via a column picker toolbar
 - **CSV export** — export all or selected rows to CSV
 - **Row selection** — checkbox column for bulk selection
+- **Categories** — define project categories with prefix codes; auto-generates sequential project codes (e.g. ED-24-001)
 - **Project phases** — Contratto, Esecuzione, Pagamento, each with its own folder structure
 - **File management** — add, remove, and sync files per phase
 - **Photo support** — EXIF extraction (camera, date, GPS) and automatic thumbnail generation
@@ -20,9 +21,9 @@ Desktop application for managing and archiving project documents. Built with [Ta
 
 ### Screenshots
 
-| Dashboard | Project Detail | Create Project |
-|-----------|---------------|----------------|
-| ![Dashboard](screenshots/dashboard.png) | ![Project Detail](screenshots/project-detail.png) | ![Create Project](screenshots/create-project.png) |
+| Dashboard | Project Detail | New Project |
+|-----------|---------------|-------------|
+| ![Dashboard](screenshots/dashboard.png) | ![Project Detail](screenshots/details.png) | ![New Project](screenshots/new_project.png) |
 
 ## Installation
 
@@ -81,7 +82,7 @@ archivio/
 │   │   │   ├── Dashboard.tsx     # Main table view with export
 │   │   │   ├── ProjectDetail.tsx # Project detail with phases/files
 │   │   │   ├── ProjectDialog.tsx # Create/edit project form
-│   │   │   └── Settings.tsx      # Language settings
+│   │   │   └── Settings.tsx      # Language & category settings
 │   │   ├── components/
 │   │   │   ├── ProjectTable.tsx  # TanStack Table with inline editing
 │   │   │   ├── FileList.tsx      # File listing per phase
@@ -98,11 +99,12 @@ archivio/
 │   │   ├── commands.rs           # Tauri command handlers
 │   │   ├── storage.rs            # File system, EXIF, thumbnails
 │   │   ├── indexer.rs            # HTML index generation
-│   │   ├── models.rs             # Data models
-│   │   ├── settings.rs           # App settings
+│   │   ├── models.rs             # Data models (Project, Category, etc.)
+│   │   ├── settings.rs           # App settings (language, categories)
 │   │   └── error.rs              # Error types
 │   ├── tauri.conf.json
 │   └── Cargo.toml
+├── screenshots/                  # App screenshots
 ├── .github/workflows/
 │   └── build-windows.yml         # CI: builds Windows installer
 └── package.json                  # Root scripts (dev, build)
@@ -115,6 +117,7 @@ Projects are stored in `~/Documents/Archivio/` by default:
 ```
 Archivio/
 ├── index.html                    # Generated HTML index
+├── settings.json                 # App settings (language, categories)
 └── projects/
     ├── C-2024-001_office-renovation/
     │   ├── metadata.json         # Project metadata (JSON)
@@ -130,7 +133,7 @@ Archivio/
     └── ...
 ```
 
-Each project's metadata includes: code, name, client, status, contract date, completion date, amount, amount paid, phases, tags, and notes.
+Each project's metadata includes: code, name, client, status, contract date, completion date, amount, amount paid, phases, tags, category, and notes.
 
 ## Tech Stack
 

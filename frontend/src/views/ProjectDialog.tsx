@@ -1,7 +1,7 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useI18n } from '../i18n';
-import { createProject, updateProject } from '../api';
-import type { Project } from '../types';
+import { createProject, updateProject, listCategories, getNextCodePreview } from '../api';
+import type { Project, Category } from '../types';
 import Dialog from '../components/Dialog';
 import DatePicker from '../components/DatePicker';
 
@@ -24,15 +24,34 @@ export default function ProjectDialog({ mode, project, onClose }: ProjectDialogP
   const [status, setStatus] = useState(project?.status || 'bozza');
   const [notes, setNotes] = useState(project?.notes || '');
 
+  const [categories, setCategories] = useState<Category[]>([]);
+  const [categoryId, setCategoryId] = useState(project?.category_id || '');
+  const [codePreview, setCodePreview] = useState('');
+
+  useEffect(() => {
+    listCategories().then(setCategories).catch(console.error);
+  }, []);
+
+  useEffect(() => {
+    if (categoryId) {
+      getNextCodePreview(categoryId)
+        .then(setCodePreview)
+        .catch(() => setCodePreview(''));
+    } else {
+      setCodePreview('');
+    }
+  }, [categoryId]);
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     const params = {
-      code,
+      code: categoryId ? undefined : code || undefined,
       name,
       client,
       description,
       contract_date: contractDate || undefined,
       amount: amount ? parseFloat(amount) : undefined,
+      category_id: categoryId || undefined,
     };
     console.log('ProjectDialog submitting contractDate:', contractDate);
     console.log('ProjectDialog create params:', params);
@@ -61,16 +80,39 @@ export default function ProjectDialog({ mode, project, onClose }: ProjectDialogP
       onClose={onClose}
     >
       <form onSubmit={handleSubmit}>
-        <label>
-          {t('code')}
-          <input
-            type="text"
-            value={code}
-            required
-            placeholder={t('code_placeholder')}
-            onChange={(e) => setCode(e.target.value)}
-          />
-        </label>
+        {mode === 'create' && categories.length > 0 && (
+          <label>
+            {t('category')}
+            <select
+              value={categoryId}
+              onChange={(e) => setCategoryId(e.target.value)}
+            >
+              <option value="">{t('no_category')}</option>
+              {categories.map((cat) => (
+                <option key={cat.id} value={cat.id}>
+                  {cat.name} ({cat.prefix})
+                </option>
+              ))}
+            </select>
+          </label>
+        )}
+        {mode === 'create' && categoryId && codePreview && (
+          <label className="code-preview">
+            {t('preview_code')}: <strong>{codePreview}</strong>
+          </label>
+        )}
+        {(mode === 'edit' || !categoryId) && (
+          <label>
+            {t('code')}
+            <input
+              type="text"
+              value={code}
+              required
+              placeholder={t('code_placeholder')}
+              onChange={(e) => setCode(e.target.value)}
+            />
+          </label>
+        )}
         <label>
           {t('name')}
           <input

@@ -67,5 +67,17 @@
   "amount_paid": "Importo Pagato",
   "created_at": "Creato il",
   "updated_at": "Ultima modifica",
-  "columns": "Colonne"
+  "columns": "Colonne",
+  "categories": "Categorie",
+  "category": "Categoria",
+  "add_category": "Aggiungi Categoria",
+  "category_name": "Nome Categoria",
+  "category_prefix": "Prefisso",
+  "no_category": "Nessuna (codice manuale)",
+  "preview_code": "Codice prossimo progetto",
+  "confirm_delete_category": "Eliminare questa categoria?",
+  "no_categories": "Nessuna categoria definita.",
+  "phase_contratto": "Contratto",
+  "phase_esecuzione": "Esecuzione",
+  "phase_pagamento": "Pagamento"
 }

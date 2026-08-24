@@ -563,6 +563,14 @@ body {
   vertical-align: middle;
 }
 
+.project-table td:nth-child(2) { min-width: 120px; }
+.project-table td:nth-child(3) { min-width: 220px; }
+.project-table td:nth-child(4) { min-width: 170px; }
+.project-table td:nth-child(6) { min-width: 160px; }
+.project-table td:nth-child(7) { min-width: 130px; }
+.project-table td:nth-child(8) { min-width: 130px; }
+.project-table td:nth-child(9) { min-width: 160px; }
+
 .table-row {
   cursor: pointer;
   transition: background 0.1s;
@@ -614,6 +622,7 @@ body {
 
 .inline-editor {
   width: 100%;
+  min-width: 150px;
   padding: 0.25rem 0.45rem;
   border: 1px solid var(--primary);
   border-radius: 4px;
@@ -632,6 +641,55 @@ body {
 
 .inline-editor-date {
   min-width: 160px;
+}
+
+.inline-editor-wrap {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+}
+
+.inline-editor-wrap .inline-editor {
+  flex: 1;
+}
+
+.inline-editor-confirm {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  border: none;
+  border-radius: 4px;
+  background: var(--primary);
+  color: #fff;
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: background 0.15s;
+}
+
+.inline-editor-confirm:hover {
+  background: #c0392b;
+}
+
+.inline-editor-cancel {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  border: none;
+  border-radius: 4px;
+  background: var(--border);
+  color: var(--text-muted);
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: background 0.15s, color 0.15s;
+}
+
+.inline-editor-cancel:hover {
+  background: #e74c3c;
+  color: #fff;
 }
 
 .inline-editor-date .dp-input {
@@ -966,6 +1024,17 @@ body {
   border-bottom: none;
 }
 
+/* Settings group with vertical layout for categories section */
+.settings-group:has(h2) {
+  flex-direction: column;
+  align-items: stretch;
+}
+
+.settings-group h2 {
+  font-size: 1.1rem;
+  margin-bottom: 0.75rem;
+}
+
 .settings-label {
   font-weight: 500;
   font-size: 0.95rem;
@@ -978,4 +1047,127 @@ body {
   font-size: 0.9rem;
   background: var(--surface);
   min-width: 150px;
+}
+
+/* ---- Category Management ---- */
+
+.category-form {
+  display: flex;
+  gap: 0.5rem;
+  margin-bottom: 1rem;
+}
+
+.category-form input {
+  padding: 0.4rem 0.75rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  font-size: 0.9rem;
+}
+
+.category-form input:first-child {
+  flex: 1;
+}
+
+.category-form input:nth-child(2) {
+  width: 80px;
+}
+
+.category-error {
+  color: #d32f2f;
+  font-size: 0.85rem;
+  margin-bottom: 0.75rem;
+  padding: 0.4rem 0.6rem;
+  background: #fdecea;
+  border-radius: var(--radius);
+}
+
+.category-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.category-item {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.5rem 0.75rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+}
+
+.category-item .btn {
+  padding: 0.3rem 0.6rem;
+  font-size: 0.8rem;
+  flex-shrink: 0;
+}
+
+.category-item-edit {
+  gap: 0.5rem;
+}
+
+.category-item-edit input {
+  padding: 0.3rem 0.5rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  font-size: 0.9rem;
+}
+
+.category-item-edit input:first-child {
+  flex: 1;
+}
+
+.category-item-edit input:nth-child(2) {
+  width: 70px;
+}
+
+.category-item-name {
+  flex: 1;
+  font-weight: 500;
+}
+
+.category-item-prefix {
+  font-family: monospace;
+  font-size: 0.9rem;
+  background: #e8e8e8;
+  padding: 0.15rem 0.45rem;
+  border-radius: 3px;
+}
+
+.category-item-counter {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+}
+
+.category-empty {
+  color: var(--text-muted);
+  font-size: 0.9rem;
+  padding: 0.5rem 0;
+}
+
+/* Code preview in project dialog */
+.code-preview {
+  font-size: 0.9rem;
+  color: var(--text-muted);
+  margin-bottom: 1rem;
+  padding: 0.5rem 0.75rem;
+  background: #f5f5f5;
+  border-radius: var(--radius);
+}
+
+.code-preview strong {
+  color: var(--text);
+  font-family: monospace;
+  font-size: 1rem;
+}
+
+.btn.danger {
+  color: #d32f2f;
+  border-color: #d32f2f;
+  background: #fdecea;
+}
+
+.btn.danger:hover {
+  background: #d32f2f;
+  color: white;
 }

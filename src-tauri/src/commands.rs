@@ -4,7 +4,7 @@
 
 use crate::error::AppResult;
 use crate::indexer;
-use crate::models::{default_phases, FileEntry, Project, ProjectStatus, ProjectSummary};
+use crate::models::{default_phases, Category, FileEntry, Project, ProjectStatus, ProjectSummary};
 use crate::settings::Settings;
 use crate::storage::Storage;
 use chrono::{NaiveDate, Utc};
@@ -18,13 +18,14 @@ use uuid::Uuid;
 #[derive(Debug, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub struct CreateProjectRequest {
-    pub code: String,
+    pub code: Option<String>,
     pub name: String,
     pub client: String,
     pub description: Option<String>,
     pub contract_date: Option<String>,
     pub amount: Option<f64>,
     pub tags: Option<Vec<String>>,
+    pub category_id: Option<String>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -80,9 +81,28 @@ pub fn create_project(
         });
     eprintln!("[create_project] contract_date_parsed: {:?}", contract_date_parsed);
 
+    let code = if let Some(ref cat_id) = request.category_id {
+        let mut settings = state.settings.lock().unwrap();
+        let settings_path = state.settings_path.lock().unwrap().clone();
+        let category = settings
+            .categories
+            .iter_mut()
+            .find(|c| &c.id == cat_id)
+            .ok_or_else(|| crate::error::AppError::InvalidPath(format!("Category not found: {}", cat_id)))?;
+
+        let year = Utc::now().format("%y").to_string();
+        let num = category.next_number;
+        let generated_code = format!("{}-{}-{:03}", category.prefix.to_uppercase(), year, num);
+        category.next_number += 1;
+        settings.save(&settings_path)?;
+        generated_code
+    } else {
+        request.code.unwrap_or_default()
+    };
+
     let mut project = Project {
         id: Uuid::new_v4().to_string(),
-        code: request.code,
+        code,
         name: request.name,
         client: request.client,
         description: request.description.unwrap_or_default(),
@@ -93,6 +113,7 @@ pub fn create_project(
         status: ProjectStatus::Bozza,
         phases: default_phases(),
         tags: request.tags.unwrap_or_default(),
+        category_id: request.category_id,
         notes: String::new(),
         created_at: Utc::now(),
         updated_at: Utc::now(),
@@ -376,6 +397,117 @@ pub fn get_index_html(state: State<'_, AppState>) -> AppResult<String> {
     Ok(indexer::generate_index(&projects))
 }
 
+// ---- Categories ----
+
+#[tauri::command]
+pub fn list_categories(state: State<'_, AppState>) -> AppResult<Vec<Category>> {
+    let settings = state.settings.lock().unwrap();
+    Ok(settings.categories.clone())
+}
+
+#[tauri::command]
+pub fn add_category(
+    state: State<'_, AppState>,
+    name: String,
+    prefix: String,
+) -> AppResult<Category> {
+    let settings_path = state.settings_path.lock().unwrap().clone();
+    let mut settings = state.settings.lock().unwrap();
+
+    let upper_prefix = prefix.to_uppercase();
+    if settings.categories.iter().any(|c| c.prefix.to_uppercase() == upper_prefix) {
+        return Err(crate::error::AppError::InvalidPath(format!(
+            "Prefix '{}' already exists",
+            upper_prefix
+        )));
+    }
+
+    let category = Category {
+        id: Uuid::new_v4().to_string(),
+        name,
+        prefix: upper_prefix,
+        next_number: 1,
+    };
+    settings.categories.push(category.clone());
+    settings.save(&settings_path)?;
+    Ok(category)
+}
+
+#[tauri::command]
+pub fn update_category(
+    state: State<'_, AppState>,
+    id: String,
+    name: Option<String>,
+    prefix: Option<String>,
+) -> AppResult<Category> {
+    let settings_path = state.settings_path.lock().unwrap().clone();
+    let mut settings = state.settings.lock().unwrap();
+
+    if let Some(ref new_prefix) = prefix {
+        let upper_prefix = new_prefix.to_uppercase();
+        if settings.categories.iter().any(|c| c.id != id && c.prefix.to_uppercase() == upper_prefix) {
+            return Err(crate::error::AppError::InvalidPath(format!(
+                "Prefix '{}' already exists",
+                upper_prefix
+            )));
+        }
+    }
+
+    let category = settings
+        .categories
+        .iter_mut()
+        .find(|c| c.id == id)
+        .ok_or_else(|| crate::error::AppError::InvalidPath(format!("Category not found: {}", id)))?;
+
+    if let Some(new_name) = name {
+        category.name = new_name;
+    }
+    if let Some(new_prefix) = prefix {
+        category.prefix = new_prefix.to_uppercase();
+    }
+
+    let result = category.clone();
+    settings.save(&settings_path)?;
+    Ok(result)
+}
+
+#[tauri::command]
+pub fn delete_category(state: State<'_, AppState>, id: String) -> AppResult<()> {
+    let settings_path = state.settings_path.lock().unwrap().clone();
+    let mut settings = state.settings.lock().unwrap();
+    let before_len = settings.categories.len();
+    settings.categories.retain(|c| c.id != id);
+    if settings.categories.len() == before_len {
+        return Err(crate::error::AppError::InvalidPath(format!(
+            "Category not found: {}",
+            id
+        )));
+    }
+    settings.save(&settings_path)?;
+    Ok(())
+}
+
+#[tauri::command]
+pub fn get_next_code_preview(
+    state: State<'_, AppState>,
+    category_id: String,
+) -> AppResult<String> {
+    let settings = state.settings.lock().unwrap();
+    let category = settings
+        .categories
+        .iter()
+        .find(|c| c.id == category_id)
+        .ok_or_else(|| crate::error::AppError::InvalidPath(format!("Category not found: {}", category_id)))?;
+
+    let year = Utc::now().format("%y").to_string();
+    Ok(format!(
+        "{}-{}-{:03}",
+        category.prefix.to_uppercase(),
+        year,
+        category.next_number
+    ))
+}
+
 // ---- Utilities ----
 
 #[tauri::command]
@@ -568,7 +700,7 @@ mod tests {
     fn mime_request_deserialization() {
         let json = r#"{"code":"C-001","name":"Test","client":"Client"}"#;
         let req: CreateProjectRequest = serde_json::from_str(json).unwrap();
-        assert_eq!(req.code, "C-001");
+        assert_eq!(req.code, Some("C-001".into()));
         assert_eq!(req.name, "Test");
         assert!(req.description.is_none());
         assert!(req.amount.is_none());

@@ -89,66 +89,112 @@ function EditCell({ value, colId, rowId, onSave, onCancel }: EditCellProps) {
     }
   };
 
+  const ConfirmBtn = () => (
+    <button
+      className="inline-editor-confirm"
+      type="button"
+      onMouseDown={(e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        commit();
+      }}
+    >
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+        <polyline points="20 6 9 17 4 12" />
+      </svg>
+    </button>
+  );
+
+  const CancelBtn = () => (
+    <button
+      className="inline-editor-cancel"
+      type="button"
+      onMouseDown={(e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        onCancel();
+      }}
+    >
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+        <line x1="18" y1="6" x2="6" y2="18" />
+        <line x1="6" y1="6" x2="18" y2="18" />
+      </svg>
+    </button>
+  );
+
   if (colId === 'status') {
     return (
-      <select
-        ref={inputRef as React.RefObject<HTMLSelectElement>}
-        className="inline-editor"
-        value={draft ?? ''}
-        onChange={(e) => {
-          setDraft(e.target.value);
-          onSave(rowId, colId, e.target.value || null);
-        }}
-        onBlur={commit}
-        onKeyDown={handleKeyDown}
-      >
-        <option value="bozza">{t('status_bozza')}</option>
-        <option value="in_corso">{t('status_in_corso')}</option>
-        <option value="sospeso">{t('status_sospeso')}</option>
-        <option value="completato">{t('status_completato')}</option>
-        <option value="archiviato">{t('status_archiviato')}</option>
-      </select>
+      <div className="inline-editor-wrap">
+        <select
+          ref={inputRef as React.RefObject<HTMLSelectElement>}
+          className="inline-editor"
+          value={draft ?? ''}
+          onChange={(e) => {
+            setDraft(e.target.value);
+            onSave(rowId, colId, e.target.value || null);
+          }}
+          onKeyDown={handleKeyDown}
+        >
+          <option value="bozza">{t('status_bozza')}</option>
+          <option value="in_corso">{t('status_in_corso')}</option>
+          <option value="sospeso">{t('status_sospeso')}</option>
+          <option value="completato">{t('status_completato')}</option>
+          <option value="archiviato">{t('status_archiviato')}</option>
+        </select>
+        <ConfirmBtn />
+        <CancelBtn />
+      </div>
     );
   }
 
   if (colId === 'contract_date' || colId === 'completion_date') {
     return (
-      <div className="inline-editor-date">
-        <DatePicker
-          value={draft ?? ''}
-          onChange={(val) => {
-            onSave(rowId, colId, val || null);
-          }}
-        />
+      <div className="inline-editor-wrap">
+        <div className="inline-editor-date">
+          <DatePicker
+            value={draft ?? ''}
+            onChange={(val) => {
+              onSave(rowId, colId, val || null);
+            }}
+          />
+        </div>
+        <ConfirmBtn />
+        <CancelBtn />
       </div>
     );
   }
 
   if (colId === 'amount' || colId === 'amount_paid') {
     return (
-      <input
-        ref={inputRef as React.RefObject<HTMLInputElement>}
-        type="number"
-        step="0.01"
-        className="inline-editor"
-        value={draft ?? ''}
-        onChange={(e) => setDraft(e.target.value)}
-        onBlur={commit}
-        onKeyDown={handleKeyDown}
-      />
+      <div className="inline-editor-wrap">
+        <input
+          ref={inputRef as React.RefObject<HTMLInputElement>}
+          type="number"
+          step="0.01"
+          className="inline-editor"
+          value={draft ?? ''}
+          onChange={(e) => setDraft(e.target.value)}
+          onKeyDown={handleKeyDown}
+        />
+        <ConfirmBtn />
+        <CancelBtn />
+      </div>
     );
   }
 
   return (
-    <input
-      ref={inputRef as React.RefObject<HTMLInputElement>}
-      type="text"
-      className="inline-editor"
-      value={draft ?? ''}
-      onChange={(e) => setDraft(e.target.value)}
-      onBlur={commit}
-      onKeyDown={handleKeyDown}
-    />
+    <div className="inline-editor-wrap">
+      <input
+        ref={inputRef as React.RefObject<HTMLInputElement>}
+        type="text"
+        className="inline-editor"
+        value={draft ?? ''}
+        onChange={(e) => setDraft(e.target.value)}
+        onKeyDown={handleKeyDown}
+      />
+      <ConfirmBtn />
+      <CancelBtn />
+    </div>
   );
 }
 
@@ -404,6 +450,7 @@ export default function ProjectTable({
       }),
       column.accessor('code', {
         header: () => t('code'),
+        minSize: 100,
         cell: (info) => {
           const isEditing = editingCell?.rowId === info.row.id && editingCell?.colId === 'code';
           if (isEditing) {
@@ -427,6 +474,7 @@ export default function ProjectTable({
       }),
       column.accessor('name', {
         header: () => t('name'),
+        minSize: 200,
         cell: (info) => {
           const isEditing = editingCell?.rowId === info.row.id && editingCell?.colId === 'name';
           if (isEditing) {
@@ -450,6 +498,7 @@ export default function ProjectTable({
       }),
       column.accessor('client', {
         header: () => t('client'),
+        minSize: 150,
         cell: (info) => {
           const isEditing = editingCell?.rowId === info.row.id && editingCell?.colId === 'client';
           if (isEditing) {
@@ -498,6 +547,7 @@ export default function ProjectTable({
       }),
       column.accessor('contract_date', {
         header: () => t('contract_date'),
+        minSize: 140,
         cell: (info) => {
           const val = info.getValue();
           const isEditing = editingCell?.rowId === info.row.id && editingCell?.colId === 'contract_date';
@@ -523,6 +573,7 @@ export default function ProjectTable({
       }),
       column.accessor('amount', {
         header: () => t('amount'),
+        minSize: 120,
         cell: (info) => {
           const val = info.getValue();
           const isEditing = editingCell?.rowId === info.row.id && editingCell?.colId === 'amount';
@@ -547,6 +598,7 @@ export default function ProjectTable({
       }),
       column.accessor('amount_paid', {
         header: () => t('amount_paid'),
+        minSize: 120,
         cell: (info) => {
           const val = info.getValue();
           const isEditing = editingCell?.rowId === info.row.id && editingCell?.colId === 'amount_paid';
@@ -571,6 +623,7 @@ export default function ProjectTable({
       }),
       column.accessor('completion_date', {
         header: () => t('completion_date'),
+        minSize: 140,
         cell: (info) => {
           const val = info.getValue();
           const isEditing = editingCell?.rowId === info.row.id && editingCell?.colId === 'completion_date';
@@ -729,7 +782,11 @@ export default function ProjectTable({
                   onClick={(e) => {
                     if ((e.target as HTMLElement).closest('.table-checkbox')) return;
                     if ((e.target as HTMLElement).closest('.editable-cell')) return;
+                    if ((e.target as HTMLElement).closest('.inline-editor')) return;
+                    if ((e.target as HTMLElement).closest('.inline-editor-date')) return;
+                    if ((e.target as HTMLElement).closest('.dp')) return;
                     if ((e.target as HTMLElement).closest('.delete-btn')) return;
+                    if (editingCell?.rowId === row.id) return;
                     onProjectClick(row.original.id);
                   }}
                 >

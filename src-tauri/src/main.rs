@@ -53,6 +53,11 @@ fn main() {
             commands::get_project_meta,
             commands::get_settings,
             commands::save_settings,
+            commands::list_categories,
+            commands::add_category,
+            commands::update_category,
+            commands::delete_category,
+            commands::get_next_code_preview,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

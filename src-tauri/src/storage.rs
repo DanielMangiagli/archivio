@@ -275,6 +275,7 @@ impl Storage {
             completion_date: project.completion_date,
             amount: project.amount,
             amount_paid: project.amount_paid,
+            category_id: project.category_id.clone(),
             file_count,
             photo_count,
         }
@@ -378,6 +379,7 @@ mod tests {
             status: ProjectStatus::Bozza,
             phases: default_phases(),
             tags: vec![],
+            category_id: None,
             notes: String::new(),
             created_at: Utc::now(),
             updated_at: Utc::now(),

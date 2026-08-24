@@ -205,6 +205,7 @@ mod tests {
             status,
             phases: default_phases(),
             tags: vec![],
+            category_id: None,
             notes: String::new(),
             created_at: Utc::now(),
             updated_at: Utc::now(),

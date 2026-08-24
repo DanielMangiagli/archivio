@@ -6,6 +6,14 @@ use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
 
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct Category {
+    pub id: String,
+    pub name: String,
+    pub prefix: String,
+    pub next_number: u32,
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub enum ProjectStatus {
     #[serde(rename = "bozza")]
@@ -77,6 +85,7 @@ pub struct Project {
     pub status: ProjectStatus,
     pub phases: Vec<Phase>,
     pub tags: Vec<String>,
+    pub category_id: Option<String>,
     pub notes: String,
     pub created_at: DateTime<Utc>,
     pub updated_at: DateTime<Utc>,
@@ -93,6 +102,7 @@ pub struct ProjectSummary {
     pub completion_date: Option<chrono::NaiveDate>,
     pub amount: Option<f64>,
     pub amount_paid: Option<f64>,
+    pub category_id: Option<String>,
     pub file_count: usize,
     pub photo_count: usize,
 }
@@ -150,6 +160,7 @@ mod tests {
             status: ProjectStatus::Bozza,
             phases: default_phases(),
             tags: vec![],
+            category_id: None,
             notes: String::new(),
             created_at: Utc::now(),
             updated_at: Utc::now(),

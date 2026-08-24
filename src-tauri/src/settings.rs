@@ -7,16 +7,20 @@ use std::fs;
 use std::path::Path;
 
 use crate::error::AppResult;
+use crate::models::Category;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Settings {
     pub language: String,
+    #[serde(default)]
+    pub categories: Vec<Category>,
 }
 
 impl Default for Settings {
     fn default() -> Self {
         Self {
             language: "it".to_string(),
+            categories: Vec::new(),
         }
     }
 }
@@ -57,11 +61,13 @@ mod tests {
 
         let settings = Settings {
             language: "en".to_string(),
+            categories: vec![],
         };
         settings.save(&path).unwrap();
 
         let loaded = Settings::load(&path);
         assert_eq!(loaded.language, "en");
+        assert!(loaded.categories.is_empty());
     }
 
     #[test]

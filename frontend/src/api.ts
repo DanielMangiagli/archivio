@@ -3,7 +3,7 @@
 // See LICENSE file in the project root for full license information.
 
 import { invoke } from '@tauri-apps/api/core';
-import type { Project, ProjectSummary, FileEntry } from './types';
+import type { Project, ProjectSummary, FileEntry, Category, Settings } from './types';
 
 export async function listProjects(): Promise<ProjectSummary[]> {
   return invoke('list_projects');
@@ -14,7 +14,7 @@ export async function getProject(id: string): Promise<Project> {
 }
 
 export async function createProject(params: {
-  code: string;
+  code?: string;
   name: string;
   client: string;
   description?: string;
@@ -22,6 +22,7 @@ export async function createProject(params: {
   amount?: number;
   amount_paid?: number;
   tags?: string[];
+  category_id?: string;
 }): Promise<Project> {
   const cleanParams = Object.fromEntries(
     Object.entries(params).filter(([, v]) => v !== undefined)
@@ -120,12 +121,35 @@ export async function getProjectMeta(id: string): Promise<Project> {
   return invoke('get_project_meta', { id });
 }
 
-export async function getSettings(): Promise<{ language: string }> {
+export async function getSettings(): Promise<Settings> {
   return invoke('get_settings');
 }
 
 export async function saveSettings(params: {
   language?: string;
-}): Promise<{ language: string }> {
+}): Promise<Settings> {
   return invoke('save_settings', params);
+}
+
+export async function listCategories(): Promise<Category[]> {
+  return invoke('list_categories');
+}
+
+export async function addCategory(name: string, prefix: string): Promise<Category> {
+  return invoke('add_category', { name, prefix });
+}
+
+export async function updateCategory(
+  id: string,
+  params: { name?: string; prefix?: string }
+): Promise<Category> {
+  return invoke('update_category', { id, ...params });
+}
+
+export async function deleteCategory(id: string): Promise<void> {
+  return invoke('delete_category', { id });
+}
+
+export async function getNextCodePreview(categoryId: string): Promise<string> {
+  return invoke('get_next_code_preview', { categoryId });
 }

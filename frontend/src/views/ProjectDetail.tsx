@@ -23,6 +23,12 @@ const STATUS_OPTIONS: { value: ProjectStatus; i18n: string }[] = [
   { value: 'archiviato', i18n: 'status_archiviato' },
 ];
 
+const PHASE_I18N: Record<string, string> = {
+  contratto: 'phase_contratto',
+  esecuzione: 'phase_esecuzione',
+  pagamento: 'phase_pagamento',
+};
+
 function fmtAmount(v: number | null) {
   if (v === null) return '-';
   return new Intl.NumberFormat('it-IT', { style: 'currency', currency: 'EUR' }).format(v);
@@ -160,7 +166,7 @@ export default function ProjectDetail({ projectId, onBack }: Props) {
       <div className="tabs">
         {project.phases.map((p) => (
           <button key={p.id} className={`tab ${p.id === currentPhase ? 'active' : ''}`} onClick={() => setCurrentPhase(p.id)}>
-            {p.label} ({p.files.length})
+            {t(PHASE_I18N[p.id] || p.label)} ({p.files.length})
           </button>
         ))}
       </div>

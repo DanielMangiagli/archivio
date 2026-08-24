@@ -37,6 +37,13 @@ export type ProjectStatus =
   | 'completato'
   | 'archiviato';
 
+export interface Category {
+  id: string;
+  name: string;
+  prefix: string;
+  next_number: number;
+}
+
 export interface Project {
   id: string;
   code: string;
@@ -50,6 +57,7 @@ export interface Project {
   status: ProjectStatus;
   phases: Phase[];
   tags: string[];
+  category_id: string | null;
   notes: string;
   created_at: string;
   updated_at: string;
@@ -65,10 +73,12 @@ export interface ProjectSummary {
   completion_date: string | null;
   amount: number | null;
   amount_paid: number | null;
+  category_id: string | null;
   file_count: number;
   photo_count: number;
 }
 
 export interface Settings {
   language: string;
+  categories: Category[];
 }

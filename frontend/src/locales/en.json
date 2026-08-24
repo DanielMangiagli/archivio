@@ -67,5 +67,17 @@
   "amount_paid": "Amount Paid",
   "created_at": "Created",
   "updated_at": "Last modified",
-  "columns": "Columns"
+  "columns": "Columns",
+  "categories": "Categories",
+  "category": "Category",
+  "add_category": "Add Category",
+  "category_name": "Category Name",
+  "category_prefix": "Prefix",
+  "no_category": "None (manual code)",
+  "preview_code": "Next project code preview",
+  "confirm_delete_category": "Delete this category?",
+  "no_categories": "No categories defined.",
+  "phase_contratto": "Contract",
+  "phase_esecuzione": "Execution",
+  "phase_pagamento": "Payment"
 }
