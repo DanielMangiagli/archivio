@@ -41,8 +41,9 @@ step 4 "Updating src-tauri/tauri.conf.json"
 sed -i '' "s/\"version\": \"[^\"]*\"/\"version\": \"$VERSION\"/" src-tauri/tauri.conf.json
 echo "  done"
 
-step 5 "Updating docs/index.html badge"
+step 5 "Updating docs/index.html"
 sed -i '' "s/v[0-9]*\.[0-9]*\.[0-9]*/v$VERSION/" docs/index.html
+sed -i '' "s/Archivio_[0-9]*\.[0-9]*\.[0-9]*/Archivio_$VERSION/g" docs/index.html
 echo "  done"
 
 step 6 "Regenerating lock files"
