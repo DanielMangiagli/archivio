@@ -156,11 +156,20 @@
 
     /* ---- Screenshots ---- */
     .screenshots {
-      padding: 2rem 0 4rem;
+      padding: 6rem 0;
+      border-top: 1px solid var(--border);
     }
-    .screenshot-showcase {
+    .screenshot-gallery {
+      display: flex;
+      flex-direction: column;
+      gap: 3rem;
       max-width: 900px;
       margin: 0 auto;
+    }
+    .screenshot-item {
+      text-align: center;
+    }
+    .screenshot-showcase {
       border-radius: 16px;
       overflow: hidden;
       border: 1px solid var(--border);
@@ -170,6 +179,11 @@
       width: 100%;
       height: auto;
       display: block;
+    }
+    .screenshot-caption {
+      margin-top: 1rem;
+      color: var(--text-muted);
+      font-size: 0.95rem;
     }
 
     /* ---- Features ---- */
@@ -322,11 +336,12 @@
 <nav>
   <div class="container">
     <div class="brand">
-      <img src="../src-tauri/icons/icon.png" alt="Archivio">
+      <img src="icon.png" alt="Archivio">
       Archivio
     </div>
     <div class="links">
       <a href="#features">Features</a>
+      <a href="#screenshots">Screenshots</a>
       <a href="#how">How it works</a>
       <a href="#download">Download</a>
       <a href="https://github.com/DanielMangiagli/archivio">GitHub</a>
@@ -337,7 +352,7 @@
 <section class="hero">
   <div class="container">
     <div class="hero-icon">
-      <img src="../src-tauri/icons/icon.png" alt="Archivio">
+      <img src="icon.png" alt="Archivio">
     </div>
     <span class="hero-badge">v1.2.0</span>
     <h1>Archivio</h1>
@@ -349,10 +364,29 @@
   </div>
 </section>
 
-<section class="screenshots">
+<section class="screenshots" id="screenshots">
   <div class="container">
-    <div class="screenshot-showcase">
-      <img src="../screenshots/dashboard.png" alt="Archivio Dashboard" class="screenshot-img">
+    <h2 class="section-title">See it in action</h2>
+    <p class="section-subtitle">A clean interface for managing all your project documents.</p>
+    <div class="screenshot-gallery">
+      <div class="screenshot-item">
+        <div class="screenshot-showcase">
+          <img src="screenshots/dashboard.png" alt="Archivio Dashboard" class="screenshot-img">
+        </div>
+        <p class="screenshot-caption">Dashboard — all your projects at a glance</p>
+      </div>
+      <div class="screenshot-item">
+        <div class="screenshot-showcase">
+          <img src="screenshots/details.png" alt="Archivio Project Detail" class="screenshot-img">
+        </div>
+        <p class="screenshot-caption">Project detail — organized by phase</p>
+      </div>
+      <div class="screenshot-item">
+        <div class="screenshot-showcase">
+          <img src="screenshots/new_project.png" alt="Archivio Create Project" class="screenshot-img">
+        </div>
+        <p class="screenshot-caption">Create project — quick and simple</p>
+      </div>
     </div>
   </div>
 </section>
