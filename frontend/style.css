@@ -992,6 +992,8 @@ body {
   max-width: 800px;
   margin: 0 auto;
   padding: 2rem;
+  height: 100vh;
+  overflow-y: auto;
 }
 
 .settings-page header {
@@ -1143,6 +1145,133 @@ body {
   color: var(--text-muted);
   font-size: 0.9rem;
   padding: 0.5rem 0;
+}
+
+/* ---- Folder Structure Editor ---- */
+
+.folder-structure-desc {
+  color: var(--text-muted);
+  font-size: 0.85rem;
+  margin-bottom: 1rem;
+}
+
+.phase-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  margin-bottom: 1rem;
+}
+
+.phase-card {
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 0.75rem;
+  background: var(--surface);
+}
+
+.phase-card-header {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.phase-card-reorder {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.phase-input-label {
+  flex: 1;
+  padding: 0.4rem 0.6rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  font-size: 0.9rem;
+  font-weight: 500;
+}
+
+.phase-input-folder {
+  width: 140px;
+  padding: 0.4rem 0.6rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  font-size: 0.85rem;
+  font-family: monospace;
+}
+
+.phase-subfolders {
+  margin-top: 0.5rem;
+  padding-left: 2.5rem;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.phase-subfolders-label {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  margin-right: 0.25rem;
+}
+
+.phase-subfolder-item {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+
+.phase-subfolder-input {
+  width: 160px;
+  padding: 0.25rem 0.5rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  font-size: 0.85rem;
+  font-family: monospace;
+}
+
+.btn-icon {
+  background: none;
+  border: 1px solid transparent;
+  cursor: pointer;
+  padding: 2px 4px;
+  font-size: 0.7rem;
+  color: var(--text-muted);
+  border-radius: 3px;
+  line-height: 1;
+}
+
+.btn-icon:hover:not(:disabled) {
+  background: var(--border);
+  color: var(--text);
+}
+
+.btn-icon:disabled {
+  opacity: 0.3;
+  cursor: not-allowed;
+}
+
+.btn-icon.danger {
+  color: #d32f2f;
+}
+
+.btn-icon.danger:hover {
+  background: #fdecea;
+}
+
+.btn.small {
+  padding: 0.2rem 0.5rem;
+  font-size: 0.8rem;
+}
+
+.folder-template-actions {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+}
+
+.template-saved {
+  color: #2e7d32;
+  font-size: 0.85rem;
 }
 
 /* Code preview in project dialog */

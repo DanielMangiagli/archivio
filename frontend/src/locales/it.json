@@ -77,7 +77,18 @@
   "preview_code": "Codice prossimo progetto",
   "confirm_delete_category": "Eliminare questa categoria?",
   "no_categories": "Nessuna categoria definita.",
-  "phase_contratto": "Contratto",
-  "phase_esecuzione": "Esecuzione",
-  "phase_pagamento": "Pagamento"
+  "folder_structure": "Struttura Cartelle",
+  "folder_structure_desc": "Definisci le fasi e le sottocartelle per i nuovi progetti",
+  "add_phase": "Aggiungi Fase",
+  "phase": "Fase",
+  "phase_name": "Nome Fase",
+  "folder_name": "Nome Cartella",
+  "subfolders": "Sottocartelle",
+  "subfolder_name": "Nome Sottocartella",
+  "add_subfolder": "Aggiungi Sottocartella",
+  "reset_to_default": "Ripristina Predefinito",
+  "confirm_reset_template": "Ripristinare la struttura cartelle predefinita?",
+  "no_phases": "Nessuna fase definita.",
+  "move_up": "Sposta su",
+  "move_down": "Sposta giù"
 }

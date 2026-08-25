@@ -68,7 +68,54 @@ pub struct Phase {
     pub id: String,
     pub label: String,
     pub folder_name: String,
+    #[serde(default)]
+    pub subfolders: Vec<String>,
     pub files: Vec<FileEntry>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct FolderTemplatePhase {
+    pub id: String,
+    pub label: String,
+    pub folder_name: String,
+    pub subfolders: Vec<String>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct FolderTemplate {
+    pub phases: Vec<FolderTemplatePhase>,
+}
+
+impl Default for FolderTemplate {
+    fn default() -> Self {
+        Self {
+            phases: vec![
+                FolderTemplatePhase {
+                    id: "contratto".into(),
+                    label: "Contratto".into(),
+                    folder_name: "contratto".into(),
+                    subfolders: vec!["documenti".into()],
+                },
+                FolderTemplatePhase {
+                    id: "esecuzione".into(),
+                    label: "Esecuzione".into(),
+                    folder_name: "esecuzione".into(),
+                    subfolders: vec![
+                        "relazioni".into(),
+                        "foto/originals".into(),
+                        "foto/thumb".into(),
+                        "documenti".into(),
+                    ],
+                },
+                FolderTemplatePhase {
+                    id: "pagamento".into(),
+                    label: "Pagamento".into(),
+                    folder_name: "pagamento".into(),
+                    subfolders: vec!["fatture".into(), "certificati".into()],
+                },
+            ],
+        }
+    }
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -118,27 +165,19 @@ impl Project {
     }
 }
 
-pub fn default_phases() -> Vec<Phase> {
-    vec![
-        Phase {
-            id: "contratto".into(),
-            label: "Contratto".into(),
-            folder_name: "contratto".into(),
-            files: vec![],
-        },
-        Phase {
-            id: "esecuzione".into(),
-            label: "Esecuzione".into(),
-            folder_name: "esecuzione".into(),
-            files: vec![],
-        },
-        Phase {
-            id: "pagamento".into(),
-            label: "Pagamento".into(),
-            folder_name: "pagamento".into(),
-            files: vec![],
-        },
-    ]
+impl FolderTemplate {
+    pub fn to_phases(&self) -> Vec<Phase> {
+        self.phases
+            .iter()
+            .map(|tp| Phase {
+                id: tp.id.clone(),
+                label: tp.label.clone(),
+                folder_name: tp.folder_name.clone(),
+                subfolders: tp.subfolders.clone(),
+                files: vec![],
+            })
+            .collect()
+    }
 }
 
 #[cfg(test)]
@@ -158,7 +197,7 @@ mod tests {
             amount: None,
             amount_paid: None,
             status: ProjectStatus::Bozza,
-            phases: default_phases(),
+            phases: FolderTemplate::default().to_phases(),
             tags: vec![],
             category_id: None,
             notes: String::new(),
@@ -198,23 +237,26 @@ mod tests {
     }
 
     #[test]
-    fn default_phases_count() {
-        let phases = default_phases();
-        assert_eq!(phases.len(), 3);
+    fn default_template_phases_count() {
+        let template = FolderTemplate::default();
+        assert_eq!(template.phases.len(), 3);
     }
 
     #[test]
-    fn default_phases_ids() {
-        let phases = default_phases();
-        let ids: Vec<&str> = phases.iter().map(|p| p.id.as_str()).collect();
+    fn default_template_phases_ids() {
+        let template = FolderTemplate::default();
+        let ids: Vec<&str> = template.phases.iter().map(|p| p.id.as_str()).collect();
         assert_eq!(ids, vec!["contratto", "esecuzione", "pagamento"]);
     }
 
     #[test]
-    fn default_phases_have_empty_files() {
-        let phases = default_phases();
+    fn default_template_to_phases() {
+        let template = FolderTemplate::default();
+        let phases = template.to_phases();
+        assert_eq!(phases.len(), 3);
         for phase in &phases {
             assert!(phase.files.is_empty());
+            assert!(!phase.subfolders.is_empty());
         }
     }
 

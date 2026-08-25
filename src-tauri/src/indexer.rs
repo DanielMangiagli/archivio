@@ -188,7 +188,7 @@ fn escape_html(s: &str) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::models::{default_phases, Project, ProjectStatus};
+    use crate::models::{FolderTemplate, Project, ProjectStatus};
     use chrono::Utc;
 
     fn make_project(code: &str, name: &str, client: &str, status: ProjectStatus) -> Project {
@@ -203,7 +203,7 @@ mod tests {
             amount: Some(100000.0),
             amount_paid: None,
             status,
-            phases: default_phases(),
+            phases: FolderTemplate::default().to_phases(),
             tags: vec![],
             category_id: None,
             notes: String::new(),

@@ -77,7 +77,18 @@
   "preview_code": "Next project code preview",
   "confirm_delete_category": "Delete this category?",
   "no_categories": "No categories defined.",
-  "phase_contratto": "Contract",
-  "phase_esecuzione": "Execution",
-  "phase_pagamento": "Payment"
+  "folder_structure": "Folder Structure",
+  "folder_structure_desc": "Define the phases and subfolders for new projects",
+  "add_phase": "Add Phase",
+  "phase": "Phase",
+  "phase_name": "Phase name",
+  "folder_name": "Folder name",
+  "subfolders": "Subfolders",
+  "subfolder_name": "Subfolder name",
+  "add_subfolder": "Add Subfolder",
+  "reset_to_default": "Reset to Default",
+  "confirm_reset_template": "Reset folder structure to default?",
+  "no_phases": "No phases defined.",
+  "move_up": "Move up",
+  "move_down": "Move down"
 }

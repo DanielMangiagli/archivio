@@ -7,13 +7,15 @@ use std::fs;
 use std::path::Path;
 
 use crate::error::AppResult;
-use crate::models::Category;
+use crate::models::{Category, FolderTemplate};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Settings {
     pub language: String,
     #[serde(default)]
     pub categories: Vec<Category>,
+    #[serde(default)]
+    pub folder_template: FolderTemplate,
 }
 
 impl Default for Settings {
@@ -21,6 +23,7 @@ impl Default for Settings {
         Self {
             language: "it".to_string(),
             categories: Vec::new(),
+            folder_template: FolderTemplate::default(),
         }
     }
 }
@@ -62,12 +65,14 @@ mod tests {
         let settings = Settings {
             language: "en".to_string(),
             categories: vec![],
+            folder_template: FolderTemplate::default(),
         };
         settings.save(&path).unwrap();
 
         let loaded = Settings::load(&path);
         assert_eq!(loaded.language, "en");
         assert!(loaded.categories.is_empty());
+        assert_eq!(loaded.folder_template.phases.len(), 3);
     }
 
     #[test]
@@ -77,6 +82,7 @@ mod tests {
 
         let loaded = Settings::load(&path);
         assert_eq!(loaded.language, "it");
+        assert_eq!(loaded.folder_template.phases.len(), 3);
     }
 
     #[test]
@@ -87,6 +93,7 @@ mod tests {
 
         let loaded = Settings::load(&path);
         assert_eq!(loaded.language, "it");
+        assert_eq!(loaded.folder_template.phases.len(), 3);
     }
 
     #[test]
@@ -100,5 +107,6 @@ mod tests {
         assert!(path.exists());
         let loaded = Settings::load(&path);
         assert_eq!(loaded.language, "it");
+        assert_eq!(loaded.folder_template.phases.len(), 3);
     }
 }

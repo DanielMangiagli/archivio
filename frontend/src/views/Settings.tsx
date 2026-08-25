@@ -7,12 +7,29 @@ import {
   addCategory,
   updateCategory,
   deleteCategory,
+  getFolderTemplate,
+  saveFolderTemplate,
 } from '../api';
-import type { Category } from '../types';
+import type { Category, FolderTemplate, FolderTemplatePhase } from '../types';
 
 interface SettingsProps {
   onBack: () => void;
 }
+
+function slugify(text: string): string {
+  return text
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-|-$/g, '');
+}
+
+const DEFAULT_TEMPLATE: FolderTemplate = {
+  phases: [
+    { id: 'contratto', label: 'Contratto', folder_name: 'contratto', subfolders: ['documenti'] },
+    { id: 'esecuzione', label: 'Esecuzione', folder_name: 'esecuzione', subfolders: ['relazioni', 'foto/originals', 'foto/thumb', 'documenti'] },
+    { id: 'pagamento', label: 'Pagamento', folder_name: 'pagamento', subfolders: ['fatture', 'certificati'] },
+  ],
+};
 
 export default function Settings({ onBack }: SettingsProps) {
   const { lang, setLang: setI18nLang, t } = useI18n();
@@ -25,8 +42,12 @@ export default function Settings({ onBack }: SettingsProps) {
   const [editPrefix, setEditPrefix] = useState('');
   const [error, setError] = useState('');
 
+  const [template, setTemplate] = useState<FolderTemplate>({ phases: [] });
+  const [templateSaved, setTemplateSaved] = useState(false);
+
   useEffect(() => {
     listCategories().then(setCategories).catch(console.error);
+    getFolderTemplate().then(setTemplate).catch(console.error);
   }, []);
 
   const handleSave = async (newLang: string) => {
@@ -79,6 +100,103 @@ export default function Settings({ onBack }: SettingsProps) {
     } catch (err: unknown) {
       setError(String(err));
     }
+  };
+
+  // ---- Folder Template handlers ----
+
+  const handleAddPhase = () => {
+    const n = template.phases.length + 1;
+    const id = `fase_${n}`;
+    const label = `${t('phase')} ${n}`;
+    setTemplate({
+      phases: [
+        ...template.phases,
+        { id, label, folder_name: slugify(label), subfolders: [] },
+      ],
+    });
+  };
+
+  const handleRemovePhase = (phaseId: string) => {
+    setTemplate({
+      phases: template.phases.filter((p) => p.id !== phaseId),
+    });
+  };
+
+  const handleUpdatePhase = (phaseId: string, updates: Partial<FolderTemplatePhase>) => {
+    setTemplate({
+      phases: template.phases.map((p) => {
+        if (p.id !== phaseId) return p;
+        const updated = { ...p, ...updates };
+        if (updates.label !== undefined && !updates.folder_name) {
+          updated.folder_name = slugify(updates.label);
+        }
+        return updated;
+      }),
+    });
+  };
+
+  const handleMovePhase = (phaseId: string, direction: -1 | 1) => {
+    const idx = template.phases.findIndex((p) => p.id === phaseId);
+    if (idx < 0) return;
+    const newIdx = idx + direction;
+    if (newIdx < 0 || newIdx >= template.phases.length) return;
+    const newPhases = [...template.phases];
+    [newPhases[idx], newPhases[newIdx]] = [newPhases[newIdx], newPhases[idx]];
+    setTemplate({ phases: newPhases });
+  };
+
+  const handleAddSubfolder = (phaseId: string) => {
+    setTemplate({
+      phases: template.phases.map((p) =>
+        p.id === phaseId ? { ...p, subfolders: [...p.subfolders, ''] } : p
+      ),
+    });
+  };
+
+  const handleUpdateSubfolder = (phaseId: string, index: number, value: string) => {
+    setTemplate({
+      phases: template.phases.map((p) => {
+        if (p.id !== phaseId) return p;
+        const newSubs = [...p.subfolders];
+        newSubs[index] = value;
+        return { ...p, subfolders: newSubs };
+      }),
+    });
+  };
+
+  const handleRemoveSubfolder = (phaseId: string, index: number) => {
+    setTemplate({
+      phases: template.phases.map((p) => {
+        if (p.id !== phaseId) return p;
+        const newSubs = [...p.subfolders];
+        newSubs.splice(index, 1);
+        return { ...p, subfolders: newSubs };
+      }),
+    });
+  };
+
+  const handleSaveTemplate = async () => {
+    try {
+      const cleaned: FolderTemplate = {
+        phases: template.phases.map((p) => ({
+          id: slugify(p.label) || p.id,
+          label: p.label,
+          folder_name: slugify(p.folder_name) || p.id,
+          subfolders: p.subfolders.filter((s) => s.trim() !== ''),
+        })),
+      };
+      await saveFolderTemplate(cleaned);
+      setTemplate(cleaned);
+      setTemplateSaved(true);
+      setTimeout(() => setTemplateSaved(false), 2000);
+    } catch (err: unknown) {
+      setError(String(err));
+    }
+  };
+
+  const handleResetTemplate = () => {
+    if (!window.confirm(t('confirm_reset_template'))) return;
+    setTemplate(DEFAULT_TEMPLATE);
   };
 
   return (
@@ -173,6 +291,97 @@ export default function Settings({ onBack }: SettingsProps) {
             {categories.length === 0 && (
               <div className="category-empty">{t('no_categories')}</div>
             )}
+          </div>
+        </div>
+
+        {/* ---- Folder Structure ---- */}
+        <div className="settings-group">
+          <h2>{t('folder_structure')}</h2>
+          <p className="folder-structure-desc">{t('folder_structure_desc')}</p>
+
+          <div className="phase-list">
+            {template.phases.map((phase, phaseIdx) => (
+              <div key={phase.id} className="phase-card">
+                <div className="phase-card-header">
+                  <div className="phase-card-reorder">
+                    <button
+                      className="btn-icon"
+                      disabled={phaseIdx === 0}
+                      onClick={() => handleMovePhase(phase.id, -1)}
+                      title={t('move_up')}
+                    >
+                      &#9650;
+                    </button>
+                    <button
+                      className="btn-icon"
+                      disabled={phaseIdx === template.phases.length - 1}
+                      onClick={() => handleMovePhase(phase.id, 1)}
+                      title={t('move_down')}
+                    >
+                      &#9660;
+                    </button>
+                  </div>
+                  <input
+                    type="text"
+                    className="phase-input-label"
+                    value={phase.label}
+                    onChange={(e) => handleUpdatePhase(phase.id, { label: e.target.value })}
+                    placeholder={t('phase_name')}
+                  />
+                  <input
+                    type="text"
+                    className="phase-input-folder"
+                    value={phase.folder_name}
+                    onChange={(e) => handleUpdatePhase(phase.id, { folder_name: e.target.value })}
+                    placeholder={t('folder_name')}
+                  />
+                  <button className="btn danger" onClick={() => handleRemovePhase(phase.id)}>
+                    {t('delete')}
+                  </button>
+                </div>
+
+                <div className="phase-subfolders">
+                  <span className="phase-subfolders-label">{t('subfolders')}:</span>
+                  {phase.subfolders.map((sub, subIdx) => (
+                    <div key={subIdx} className="phase-subfolder-item">
+                      <input
+                        type="text"
+                        className="phase-subfolder-input"
+                        value={sub}
+                        onChange={(e) => handleUpdateSubfolder(phase.id, subIdx, e.target.value)}
+                        placeholder={t('subfolder_name')}
+                      />
+                      <button
+                        className="btn-icon danger"
+                        onClick={() => handleRemoveSubfolder(phase.id, subIdx)}
+                      >
+                        &#10005;
+                      </button>
+                    </div>
+                  ))}
+                  <button className="btn small" onClick={() => handleAddSubfolder(phase.id)}>
+                    + {t('add_subfolder')}
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+
+          {template.phases.length === 0 && (
+            <div className="category-empty">{t('no_phases')}</div>
+          )}
+
+          <div className="folder-template-actions">
+            <button className="btn primary" onClick={handleAddPhase}>
+              + {t('add_phase')}
+            </button>
+            <button className="btn" onClick={handleResetTemplate}>
+              {t('reset_to_default')}
+            </button>
+            <button className="btn primary" onClick={handleSaveTemplate}>
+              {t('save')}
+            </button>
+            {templateSaved && <span className="template-saved">{t('settings_saved')}</span>}
           </div>
         </div>
       </div>

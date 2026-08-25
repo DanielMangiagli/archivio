@@ -59,23 +59,8 @@ impl Storage {
             let phase_dir = dir.join(&phase.folder_name);
             fs::create_dir_all(&phase_dir)?;
 
-            // Create subfolders for esecuzione phase
-            if phase.id == "esecuzione" {
-                fs::create_dir_all(phase_dir.join("relazioni"))?;
-                fs::create_dir_all(phase_dir.join("foto").join("originals"))?;
-                fs::create_dir_all(phase_dir.join("foto").join("thumb"))?;
-                fs::create_dir_all(phase_dir.join("documenti"))?;
-            }
-
-            // Create subfolders for contratto phase
-            if phase.id == "contratto" {
-                fs::create_dir_all(phase_dir.join("documenti"))?;
-            }
-
-            // Create subfolders for pagamento phase
-            if phase.id == "pagamento" {
-                fs::create_dir_all(phase_dir.join("fatture"))?;
-                fs::create_dir_all(phase_dir.join("certificati"))?;
+            for subfolder in &phase.subfolders {
+                fs::create_dir_all(phase_dir.join(subfolder))?;
             }
         }
 
@@ -362,7 +347,7 @@ fn parse_gps_coord(field: &exif::Value) -> Option<f64> {
 mod tests {
     use super::*;
     use chrono::Utc;
-    use crate::models::{default_phases, FileEntry, ProjectStatus};
+    use crate::models::{FolderTemplate, FileEntry, ProjectStatus};
     use uuid::Uuid;
 
     fn make_project(code: &str, name: &str) -> Project {
@@ -377,7 +362,7 @@ mod tests {
             amount: None,
             amount_paid: None,
             status: ProjectStatus::Bozza,
-            phases: default_phases(),
+            phases: FolderTemplate::default().to_phases(),
             tags: vec![],
             category_id: None,
             notes: String::new(),
@@ -481,6 +466,36 @@ mod tests {
         assert!(base.join("pagamento").exists());
         assert!(base.join("pagamento").join("fatture").exists());
         assert!(base.join("pagamento").join("certificati").exists());
+    }
+
+    #[test]
+    fn scaffold_custom_phases() {
+        let (_dir, storage) = make_storage();
+        let mut p = make_project("C-002", "Custom");
+        p.phases = vec![
+            crate::models::Phase {
+                id: "fase_a".into(),
+                label: "Fase A".into(),
+                folder_name: "fase_a".into(),
+                subfolders: vec!["docs".into(), "images".into()],
+                files: vec![],
+            },
+            crate::models::Phase {
+                id: "fase_b".into(),
+                label: "Fase B".into(),
+                folder_name: "fase_b".into(),
+                subfolders: vec![],
+                files: vec![],
+            },
+        ];
+        storage.scaffold_project(&p).unwrap();
+
+        let base = storage.project_dir(&p);
+        assert!(base.join("fase_a").exists());
+        assert!(base.join("fase_a").join("docs").exists());
+        assert!(base.join("fase_a").join("images").exists());
+        assert!(base.join("fase_b").exists());
+        assert!(!base.join("fase_b").join("docs").exists());
     }
 
     #[test]

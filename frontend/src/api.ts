@@ -3,7 +3,7 @@
 // See LICENSE file in the project root for full license information.
 
 import { invoke } from '@tauri-apps/api/core';
-import type { Project, ProjectSummary, FileEntry, Category, Settings } from './types';
+import type { Project, ProjectSummary, FileEntry, Category, Settings, FolderTemplate } from './types';
 
 export async function listProjects(): Promise<ProjectSummary[]> {
   return invoke('list_projects');
@@ -152,4 +152,12 @@ export async function deleteCategory(id: string): Promise<void> {
 
 export async function getNextCodePreview(categoryId: string): Promise<string> {
   return invoke('get_next_code_preview', { categoryId });
+}
+
+export async function getFolderTemplate(): Promise<FolderTemplate> {
+  return invoke('get_folder_template');
+}
+
+export async function saveFolderTemplate(template: FolderTemplate): Promise<FolderTemplate> {
+  return invoke('save_folder_template', { template });
 }

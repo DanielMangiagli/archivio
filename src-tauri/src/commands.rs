@@ -4,7 +4,7 @@
 
 use crate::error::AppResult;
 use crate::indexer;
-use crate::models::{default_phases, Category, FileEntry, Project, ProjectStatus, ProjectSummary};
+use crate::models::{Category, FileEntry, FolderTemplate, Project, ProjectStatus, ProjectSummary};
 use crate::settings::Settings;
 use crate::storage::Storage;
 use chrono::{NaiveDate, Utc};
@@ -100,6 +100,11 @@ pub fn create_project(
         request.code.unwrap_or_default()
     };
 
+    let template = {
+        let settings = state.settings.lock().unwrap();
+        settings.folder_template.clone()
+    };
+
     let mut project = Project {
         id: Uuid::new_v4().to_string(),
         code,
@@ -111,7 +116,7 @@ pub fn create_project(
         amount: request.amount,
         amount_paid: None,
         status: ProjectStatus::Bozza,
-        phases: default_phases(),
+        phases: template.to_phases(),
         tags: request.tags.unwrap_or_default(),
         category_id: request.category_id,
         notes: String::new(),
@@ -757,4 +762,22 @@ pub fn save_settings(
     }
     settings.save(&settings_path)?;
     Ok(settings.clone())
+}
+
+#[tauri::command]
+pub fn get_folder_template(state: State<'_, AppState>) -> AppResult<FolderTemplate> {
+    let settings = state.settings.lock().unwrap();
+    Ok(settings.folder_template.clone())
+}
+
+#[tauri::command]
+pub fn save_folder_template(
+    state: State<'_, AppState>,
+    template: FolderTemplate,
+) -> AppResult<FolderTemplate> {
+    let settings_path = state.settings_path.lock().unwrap().clone();
+    let mut settings = state.settings.lock().unwrap();
+    settings.folder_template = template;
+    settings.save(&settings_path)?;
+    Ok(settings.folder_template.clone())
 }

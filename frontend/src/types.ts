@@ -27,7 +27,19 @@ export interface Phase {
   id: string;
   label: string;
   folder_name: string;
+  subfolders: string[];
   files: FileEntry[];
+}
+
+export interface FolderTemplatePhase {
+  id: string;
+  label: string;
+  folder_name: string;
+  subfolders: string[];
+}
+
+export interface FolderTemplate {
+  phases: FolderTemplatePhase[];
 }
 
 export type ProjectStatus =
@@ -81,4 +93,5 @@ export interface ProjectSummary {
 export interface Settings {
   language: string;
   categories: Category[];
+  folder_template: FolderTemplate;
 }
