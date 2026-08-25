@@ -58,14 +58,18 @@ The build output depends on your platform:
 
 ### Releasing
 
-A GitHub Actions workflow automatically builds a Windows installer when you push a version tag:
+GitHub Actions workflows automatically build installers when you push a version tag:
 
 ```bash
-git tag v1.1.0
+git tag v1.2.0
 git push --tags
 ```
 
-The `.msi` and `.exe` installers will be available in the GitHub Releases page.
+This triggers both workflows in parallel:
+- **Windows**: `.msi` and `.exe` installers
+- **macOS**: `.dmg` disk image (Apple Silicon)
+
+All artifacts are available in the GitHub Releases page.
 
 ## Project Structure
 
@@ -106,7 +110,8 @@ archivio/
 │   └── Cargo.toml
 ├── screenshots/                  # App screenshots
 ├── .github/workflows/
-│   └── build-windows.yml         # CI: builds Windows installer
+│   ├── build-windows.yml         # CI: builds Windows installer
+│   └── build-macos.yml           # CI: builds macOS DMG
 └── package.json                  # Root scripts (dev, build)
 ```
 
