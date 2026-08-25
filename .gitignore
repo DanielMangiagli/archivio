@@ -33,4 +33,4 @@ yarn-error.log*
 pnpm-debug.log*
 
 # Rust
-Cargo.lock
+# Cargo.lock is tracked — binary application best practice
