@@ -161,3 +161,11 @@ export async function getFolderTemplate(): Promise<FolderTemplate> {
 export async function saveFolderTemplate(template: FolderTemplate): Promise<FolderTemplate> {
   return invoke('save_folder_template', { template });
 }
+
+export async function pickDirectory(): Promise<string | null> {
+  return invoke('pick_directory');
+}
+
+export async function setArchiveRoot(newRoot: string): Promise<string> {
+  return invoke('set_archive_root', { newRoot });
+}

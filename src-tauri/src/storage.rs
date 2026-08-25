@@ -23,6 +23,10 @@ impl Storage {
         &self.root
     }
 
+    pub fn set_root(&mut self, new_root: PathBuf) {
+        self.root = new_root;
+    }
+
     pub fn projects_dir(&self) -> PathBuf {
         self.root.join("projects")
     }

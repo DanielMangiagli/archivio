@@ -7,6 +7,7 @@ use crate::indexer;
 use crate::models::{Category, FileEntry, FolderTemplate, Project, ProjectStatus, ProjectSummary};
 use crate::settings::Settings;
 use crate::storage::Storage;
+use crate::config::AppConfig;
 use chrono::{NaiveDate, Utc};
 use serde::Deserialize;
 use std::fs;
@@ -780,4 +781,53 @@ pub fn save_folder_template(
     settings.folder_template = template;
     settings.save(&settings_path)?;
     Ok(settings.folder_template.clone())
+}
+
+#[tauri::command]
+pub fn pick_directory() -> AppResult<Option<String>> {
+    let dir = rfd::FileDialog::new().pick_folder();
+    Ok(dir.map(|p| p.to_string_lossy().to_string()))
+}
+
+#[tauri::command]
+pub fn set_archive_root(
+    state: State<'_, AppState>,
+    new_root: String,
+) -> AppResult<String> {
+    let new_path = PathBuf::from(&new_root);
+
+    if !new_path.exists() {
+        fs::create_dir_all(&new_path)
+            .map_err(|e| crate::error::AppError::InvalidPath(format!(
+                "Cannot create directory: {}", e
+            )))?;
+    }
+
+    // Update the config file
+    let mut app_config = AppConfig::load();
+    app_config.archive_root = Some(new_path.clone());
+    app_config.save()
+        .map_err(|e| crate::error::AppError::InvalidPath(format!(
+            "Cannot save config: {}", e
+            )))?;
+
+    // Update storage root
+    {
+        let mut storage = state.storage.lock().unwrap();
+        storage.set_root(new_path.clone());
+        storage.init()?;
+    }
+
+    // Update settings path and reload settings
+    let new_settings_path = new_path.join("settings.json");
+    {
+        let mut settings_path_lock = state.settings_path.lock().unwrap();
+        *settings_path_lock = new_settings_path.clone();
+    }
+    {
+        let mut settings = state.settings.lock().unwrap();
+        *settings = Settings::load(&new_settings_path);
+    }
+
+    Ok(new_path.to_string_lossy().to_string())
 }

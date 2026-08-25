@@ -57,6 +57,8 @@
   "settings_title": "Settings",
   "language": "Language",
   "archive_root": "Archive folder",
+  "change": "Change",
+  "confirm_change_archive_root": "Change the archive folder location? Existing projects will remain in the old location.",
   "settings_saved": "Settings saved.",
   "scanned": "Scanned",
   "date_from": "From date",

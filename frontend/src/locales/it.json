@@ -57,6 +57,8 @@
   "settings_title": "Impostazioni",
   "language": "Lingua",
   "archive_root": "Cartella Archivio",
+  "change": "Cambia",
+  "confirm_change_archive_root": "Cambiare la posizione della cartella archivio? I progetti esistenti rimarranno nella vecchia posizione.",
   "settings_saved": "Impostazioni salvate.",
   "scanned": "Scansionato",
   "date_from": "Da data",

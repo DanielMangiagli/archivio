@@ -9,6 +9,9 @@ import {
   deleteCategory,
   getFolderTemplate,
   saveFolderTemplate,
+  getArchiveRoot,
+  pickDirectory,
+  setArchiveRoot,
 } from '../api';
 import type { Category, FolderTemplate, FolderTemplatePhase } from '../types';
 
@@ -44,10 +47,13 @@ export default function Settings({ onBack }: SettingsProps) {
 
   const [template, setTemplate] = useState<FolderTemplate>({ phases: [] });
   const [templateSaved, setTemplateSaved] = useState(false);
+  const [archiveRoot, setArchiveRootPath] = useState('');
+  const [archiveRootSaved, setArchiveRootSaved] = useState(false);
 
   useEffect(() => {
     listCategories().then(setCategories).catch(console.error);
     getFolderTemplate().then(setTemplate).catch(console.error);
+    getArchiveRoot().then(setArchiveRootPath).catch(console.error);
   }, []);
 
   const handleSave = async (newLang: string) => {
@@ -199,6 +205,23 @@ export default function Settings({ onBack }: SettingsProps) {
     setTemplate(DEFAULT_TEMPLATE);
   };
 
+  // ---- Archive root handlers ----
+
+  const handleChangeArchiveRoot = async () => {
+    try {
+      const dir = await pickDirectory();
+      if (!dir) return;
+      if (dir === archiveRoot) return;
+      if (!window.confirm(t('confirm_change_archive_root'))) return;
+      const newPath = await setArchiveRoot(dir);
+      setArchiveRootPath(newPath);
+      setArchiveRootSaved(true);
+      setTimeout(() => setArchiveRootSaved(false), 2000);
+    } catch (err: unknown) {
+      setError(String(err));
+    }
+  };
+
   return (
     <div className="settings-page">
       <header>
@@ -206,6 +229,15 @@ export default function Settings({ onBack }: SettingsProps) {
         <h1>{t('settings_title')}</h1>
       </header>
       <div className="settings-content">
+        <div className="settings-group">
+          <label className="settings-label">{t('archive_root')}</label>
+          <div className="archive-root-row">
+            <span className="archive-root-path">{archiveRoot}</span>
+            <button className="btn" onClick={handleChangeArchiveRoot}>{t('change')}</button>
+            {archiveRootSaved && <span className="template-saved">{t('settings_saved')}</span>}
+          </div>
+        </div>
+
         <div className="settings-group">
           <label className="settings-label">{t('language')}</label>
           <select

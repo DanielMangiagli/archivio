@@ -3,6 +3,7 @@
 // See LICENSE file in the project root for full license information.
 
 mod commands;
+mod config;
 mod error;
 mod indexer;
 mod models;
@@ -10,15 +11,13 @@ mod settings;
 mod storage;
 
 use commands::AppState;
+use config::AppConfig;
 use settings::Settings;
-use std::path::PathBuf;
 use std::sync::Mutex;
 
 fn main() {
-    // Default archive location: ~/Documents/Archivio
-    let archive_root = dirs::document_dir()
-        .unwrap_or_else(|| PathBuf::from("."))
-        .join("Archivio");
+    let app_config = AppConfig::load();
+    let archive_root = app_config.archive_root_or_default();
 
     let storage = storage::Storage::new(archive_root.clone());
     storage.init().expect("Failed to initialize archive directory");
@@ -60,6 +59,8 @@ fn main() {
             commands::get_next_code_preview,
             commands::get_folder_template,
             commands::save_folder_template,
+            commands::pick_directory,
+            commands::set_archive_root,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
